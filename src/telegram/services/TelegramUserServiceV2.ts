@@ -47,7 +47,7 @@ export class TelegramUserServiceV2 {
 	}
 
 	private async handleUpdates() {
-		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({incoming: true}))
+		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({}))
 	}
 
 	public async start():Promise<void> {

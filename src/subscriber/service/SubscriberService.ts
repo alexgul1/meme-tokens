@@ -18,7 +18,7 @@ export class SubscriberService {
 
 
 		this.subscribeToActiveFromDB();
-		JupiterService.fetchTokensPriceByTimeout()
+		JupiterService.fetchTokensPriceByTimeoutV2()
 	}
 
 	public static async subscribeToToken(tokenAddress: string, channelId: string) {

@@ -17,6 +17,7 @@ export interface IJupPrice {
 
 export class JupiterService {
 	private static tokensMap = new Map();
+	private static isRunning = false
 
 	static async getTokenPrice(pairAddress: string): Promise<IJupPrice|null> {
 		try {
@@ -45,17 +46,24 @@ export class JupiterService {
 		this.tokensMap.delete(tokenAddress)
 	}
 
-	static async fetchTokensPriceByTimeout() {
-		try {
+	static async fetchTokensPriceByTimeoutV2() {
+		this.isRunning = false; // Flag to check if the function is currently running
+
+		setInterval(async () => {
+			if (this.isRunning) return; // Prevent overlapping calls
+			this.isRunning = true;
+
 			const tokensQuery = Array.from(this.tokensMap.keys()).join(',')
 
 			if (!tokensQuery) {
-				setTimeout(() =>this.fetchTokensPriceByTimeout(), 5000)
+				this.isRunning = false;
+				return
 			}
 
-			const responseData = (await this.getTokenPrice(tokensQuery));
+			const responseData = await this.getTokenPrice(tokensQuery);
 
 			if (!responseData?.data) {
+				this.isRunning = false;
 				return;
 			}
 
@@ -65,32 +73,8 @@ export class JupiterService {
 				callback?.(tokenInfo);
 			})
 
-			setTimeout(() =>this.fetchTokensPriceByTimeout(), 5000)
+			this.isRunning = false; // Reset the flag after the call finishes
 
-		} catch (e) {
-			console.error('Error fetching Jupiter token price:', e);
-			setTimeout(() => this.fetchTokensPriceByTimeout(), 5000)
-
-
-		}
-
+		}, 5000); // 5000 ms = 5 seconds
 	}
-
-	static async subscribeToTokenPrice(tokenAddressList: Array<string>, callback: (price: IJupPrice) => void): Promise<void> {
-		try {
-			const response = await this.getTokenPrice(tokenAddressList.join(','));
-
-			if (response) {
-				callback(response)
-			}
-
-			setTimeout(() => this.subscribeToTokenPrice(tokenAddressList, callback), 5000)
-
-		} catch (error) {
-			console.error('Error fetching Raydium token price:', error);
-			setTimeout(() => this.subscribeToTokenPrice(tokenAddressList, callback), 5000)
-
-		}
-	}
-
 }

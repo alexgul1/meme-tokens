@@ -12,7 +12,6 @@ import {SubscriberService} from '../../subscriber/service/SubscriberService';
 export class TelegramUserServiceV2 {
 	private client: TelegramClient;
 	private readonly session: StoreSession;
-	private chats: Set<number>;
 	private readonly apiId: number;
 	private readonly apiHash: string;
 	private readonly chatIds: Set<string>;
@@ -21,7 +20,6 @@ export class TelegramUserServiceV2 {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
 		this.apiHash = process.env.TELEGRAM_API_HASH as string;
 		this.chatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST as string).split(','))
-
 
 		if (!this.apiId || !this.apiId) {
 			throw new Error('Environment variables TELEGRAM_API_ID and TELEGRAM_API_HASH must be set');
@@ -35,7 +33,6 @@ export class TelegramUserServiceV2 {
 
 
 		this.session = new StoreSession('my_session')
-		this.chats = new Set<number>();
 		this.client = new TelegramClient(this.session, this.apiId, this.apiHash, {connectionRetries: 5})
 
 	}
@@ -49,17 +46,8 @@ export class TelegramUserServiceV2 {
 		})
 	}
 
-	public addChat(chatId: number): void {
-		this.chats.add(chatId);
-	}
-
-	public removeChat(chatId: number): void {
-		this.chats.delete(chatId);
-	}
-
-
 	private async handleUpdates() {
-		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({}))
+		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({incoming: true}))
 	}
 
 	public async start():Promise<void> {
@@ -71,8 +59,12 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId =(message?.peerId as PeerChannel)?.channelId?.toString() || ''
 
+
 		if (this.chatIds.has(channelId)) {
+
 			const extractedAddress = extractSolAddress(message.message)
+
+			console.log('Message from subscribed channel', channelId, message.message, extractedAddress)
 
 			if (!extractedAddress) {
 				return
@@ -80,26 +72,8 @@ export class TelegramUserServiceV2 {
 
 			await SubscriberService.subscribeToToken(extractedAddress, channelId)
 
-			// const pair= await DexscreenerService.getTokenPair(extractedAddress) as IPair;
-			//
-			// if (!pair) {
-			// 	return
-			// }
-			//
-			// if (!subscribedAddresses.has(pair.baseToken.address)) {
-			// 	JupiterService.subscribeToTokenPrice([pair.baseToken.address],(data) => console.log('jup data', data));
-			//
-			// 	subscribedAddresses.add(pair.baseToken.address);
-			//
-			// }
 
 
-
-		} else {
-			console.log('I DONT HAVE THIS CHANNEL')
 		}
-
-
-		// Checks if it's a private message (from user or bot
 	}
 }

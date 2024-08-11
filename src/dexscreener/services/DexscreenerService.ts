@@ -25,7 +25,7 @@ export class DexscreenerService {
 	static async getTokenPair(tokenAddress: string): Promise<unknown>{
 		const tokenPairs = await this.getTokenPairsByAddress(tokenAddress);
 
-		if (!tokenPairs) {
+		if (!tokenPairs?.pairs) {
 			return
 		}
 

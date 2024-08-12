@@ -11,14 +11,19 @@ export class MongoService implements IMongoService<Token> {
 	private readonly uri: string;
 	private readonly dbName: string;
 	private readonly collectionName: string;
+	private readonly finishedCollectionName: string;
+
 
 	constructor() {
 		this.uri = process.env.MONGODB_URI as string;
 		this.dbName = process.env.DB_NAME as string;
 		this.collectionName = process.env.COLLECTION_NAME as string;
+		this.finishedCollectionName = process.env.FINISHED_COLLECTION_NAME as string;
 
-		if (!this.uri || !this.dbName || !this.collectionName) {
-			throw new Error('Environment variables MONGODB_URI, DB_NAME, and COLLECTION_NAME must be set');
+
+
+		if (!this.uri || !this.dbName || !this.collectionName || !this.finishedCollectionName) {
+			throw new Error('Environment variables MONGODB_URI, DB_NAME, FINISHED_COLLECTION_NAME and COLLECTION_NAME must be set');
 		}
 	}
 
@@ -77,6 +82,22 @@ export class MongoService implements IMongoService<Token> {
 		}
 		const collection: Collection<Token> = this.db.collection(this.collectionName);
 		return await collection.find({ [key]: value }).toArray();
+	}
+
+	public async finishTokenSubscription(key: string, value: unknown): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+
+		const collection: Collection<Token> = this.db.collection(this.collectionName);
+		const activeToken = await collection.findOne({ [key]: value });
+
+		if (activeToken?.status === 'Finished') {
+			const finishedCollection = this.db.collection(this.finishedCollectionName);
+
+			await finishedCollection.insertOne(activeToken);
+			await collection.deleteOne({ [key]: value });
+		}
 	}
 
 	public async close(): Promise<void> {

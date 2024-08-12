@@ -8,14 +8,19 @@ export class SubscriberService {
 	private static mongoDBInstance: MongoService
 	private static maxPositiveROE: number;
 	private static maxNegativeROE: number
+	private static shouldMoveToNewDB: number;
 
 	public static async initialization() {
 		this.maxPositiveROE = parseFloat(process.env.MAX_POSITIVE_ROE as string) || 15
 		this.maxNegativeROE = (parseFloat(process.env.MAX_NEGATIVE_ROE as string) || 10) * -1;
+		this.shouldMoveToNewDB = parseInt(process.env.SHOULD_MOVE_TO_NEW_DB as string) || 0;
 
 		this.mongoDBInstance = new MongoService();
 		await this.mongoDBInstance.connect();
 
+		if (this.shouldMoveToNewDB) {
+			this.moveOldToNewDB();
+		}
 
 		this.subscribeToActiveFromDB();
 		JupiterService.fetchTokensPriceByTimeoutV2()
@@ -62,11 +67,6 @@ export class SubscriberService {
 
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 
-
-		if (shouldBeFinished) {
-			await JupiterService.unsubscribeFromToken(token.address)
-		}
-
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', data.id, {
@@ -79,6 +79,11 @@ export class SubscriberService {
 				soldPrice: data.price
 			} : {})
 		})
+
+		if (shouldBeFinished) {
+			await JupiterService.unsubscribeFromToken(token.address)
+			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
+		}
 	}
 
 	private static async generateNewTokenData(address: string, channelId: string): Promise<Token | null> {
@@ -104,5 +109,16 @@ export class SubscriberService {
 			provider: 'Jupiter',
 			status: 'InProgress',
 		}
+	}
+
+	private static async moveOldToNewDB(): Promise<void> {
+		console.log('MOVE OLD TO NEW DB')
+
+		const finishedTokensInActiveDB = await this.mongoDBInstance.getEntitiesByValue('status', 'Finished');
+
+		for (const token of finishedTokensInActiveDB) {
+			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
+		}
+
 	}
 }

@@ -5,7 +5,7 @@ import {StoreSession} from 'telegram/sessions';
 import input from 'input';
 import {NewMessage, NewMessageEvent,} from 'telegram/events';
 import PeerChannel = Api.PeerChannel;
-import {extractSolAddress} from '../utils/addressExtractor';
+import {extractSolOrPairAddress} from '../utils/addressExtractor';
 
 import {SubscriberService} from '../../subscriber/service/SubscriberService';
 import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
@@ -60,26 +60,31 @@ export class TelegramUserServiceV2 {
 
 	public async eventHandle(event: NewMessageEvent) {
 		const message = event.message;
-		const channelId =(message?.peerId as PeerChannel)?.channelId?.toString() || ''
-
+		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
 		if (this.chatIds.has(channelId)) {
 
-			const extractedAddress = extractSolAddress(message.message)
+			const extractedData = extractSolOrPairAddress(message.message);
 
-			console.log('Message from subscribed channel', channelId, message.message, extractedAddress)
+			console.log('Message from subscribed channel', channelId, message.message, extractedData);
 
-			if (!extractedAddress) {
-				return
+			if (!extractedData) {
+				return;
 			}
 
-			await SubscriberService.subscribeToToken(extractedAddress, channelId)
+			// Depending on whether it's a token or pair address, handle it appropriately
+			if (extractedData.type === 'token') {
+				await SubscriberService.subscribeToToken(extractedData.address, channelId);
+			} else if (extractedData.type === 'pair') {
+				// Handle the pair address if needed, or treat it the same as a token address
+				await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::pair`); // Example: different handling
+			}
 		}
 	}
 
 	public async editedMessageHandle(event: EditedMessageEvent) {
 		const message = event.message;
-		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || ''
+		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
 		if (this.chatIds.has(channelId)) {
 			const editDateTimestamp = message.editDate;
@@ -98,15 +103,20 @@ export class TelegramUserServiceV2 {
 
 			// Check if the difference is less than 3 minutes (180,000 milliseconds)
 			if (timeDifferenceInMilliseconds < 180000) {
-				const extractedAddress = extractSolAddress(message.message)
+				const extractedData = extractSolOrPairAddress(message.message);
 
-				console.log('Edited message from subscribed channel', channelId, message.message, extractedAddress)
+				console.log('Edited message from subscribed channel', channelId, message.message, extractedData);
 
-				if (!extractedAddress) {
+				if (!extractedData) {
 					return;
 				}
 
-				await SubscriberService.subscribeToToken(extractedAddress, `${channelId}::edited`);
+				// Handle based on whether it's a token or pair address
+				if (extractedData.type === 'token') {
+					await SubscriberService.subscribeToToken(extractedData.address, `${channelId}::edited`);
+				} else if (extractedData.type === 'pair') {
+					await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
+				}
 			} else {
 				console.log('Edit is too late to process.', originalDate, editDate);
 			}

@@ -2,11 +2,13 @@ import {ITokenPairs} from './ITokenPairs';
 import {WebSocketService} from '../../websocket/WebSocketService';
 
 export class DexscreenerService {
-	static async getTokenInfo(tokenAddress: string): Promise<void> {
+	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs> {
 		try {
-			const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${tokenAddress}`);
+			const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairAddress}`);
 			const data = await response.json();
-			console.log('Dexscreener Token Info:', data);
+
+			return data as ITokenPairs;
+
 		} catch (error) {
 			console.error('Error fetching token info from Dexscreener:', error);
 		}
@@ -30,6 +32,17 @@ export class DexscreenerService {
 		}
 
 		return tokenPairs.pairs.find((pair)=> pair.chainId === 'solana' && pair.dexId === 'raydium')
+	}
+
+	static async getTokenByPair(pairAddress: string):Promise<unknown>{
+		const pairs = await this.getTokenInfo(pairAddress)
+
+		if (!pairs?.pairs) {
+			return
+		}
+
+		return pairs.pairs.find((pair)=> pair.chainId === 'solana' && pair.dexId === 'raydium')
+
 	}
 
 	static async subscribeToPrice(pairAddress: string): Promise<void>{

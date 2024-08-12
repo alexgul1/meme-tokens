@@ -46,6 +46,17 @@ export class SubscriberService {
 		}
 	}
 
+	public static async subscribeToPair(pairdAddress: string, channelId: string) {
+		const tokenInfo = await DexscreenerService.getTokenByPair(pairdAddress) as IPair;
+
+		if (!tokenInfo?.baseToken) {
+			return
+		}
+
+		await this.subscribeToToken(tokenInfo.baseToken.address, channelId)
+
+	}
+
 
 	public static async subscribeToActiveFromDB() {
 		const activeSubsInDB = await this.mongoDBInstance.getEntitiesByValue('status', 'InProgress')

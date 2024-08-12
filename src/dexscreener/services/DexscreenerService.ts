@@ -2,7 +2,7 @@ import {ITokenPairs} from './ITokenPairs';
 import {WebSocketService} from '../../websocket/WebSocketService';
 
 export class DexscreenerService {
-	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs> {
+	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs|null> {
 		try {
 			const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairAddress}`);
 			const data = await response.json();
@@ -11,6 +11,7 @@ export class DexscreenerService {
 
 		} catch (error) {
 			console.error('Error fetching token info from Dexscreener:', error);
+			return null;
 		}
 	}
 

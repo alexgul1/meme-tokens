@@ -66,8 +66,6 @@ export class TelegramUserServiceV2 {
 
 			const extractedData = extractSolOrPairAddress(message.message);
 
-			console.log('Message from subscribed channel', channelId, message.message, extractedData);
-
 			if (!extractedData) {
 				return;
 			}
@@ -105,8 +103,6 @@ export class TelegramUserServiceV2 {
 			if (timeDifferenceInMilliseconds < 180000) {
 				const extractedData = extractSolOrPairAddress(message.message);
 
-				console.log('Edited message from subscribed channel', channelId, message.message, extractedData);
-
 				if (!extractedData) {
 					return;
 				}
@@ -117,8 +113,6 @@ export class TelegramUserServiceV2 {
 				} else if (extractedData.type === 'pair') {
 					await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
 				}
-			} else {
-				console.log('Edit is too late to process.', originalDate, editDate);
 			}
 		}
 	}

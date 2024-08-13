@@ -27,6 +27,15 @@ export class SubscriberService {
 	}
 
 	public static async subscribeToToken(tokenAddress: string, channelId: string) {
+		const tokenInfoFromFinishedCollection = await this.mongoDBInstance.getEntityFromFinishedCollection({
+			'address': tokenAddress,
+			parsedLink: channelId,
+		})
+
+		if (tokenInfoFromFinishedCollection) {
+			console.log('We have this combination in finished collection', tokenAddress, channelId)
+		}
+
 		let tokenInfo = await this.mongoDBInstance.getEntity('address', tokenAddress);
 
 		if (!tokenInfo) {

@@ -114,15 +114,18 @@ export class SubscriberService {
 		}
 
 		const price = await JupiterService.getTokenPrice(pair.baseToken.address);
+		
+		const tokenDataFromJup = price?.data[pair.baseToken.address];
 
-
-		console.log(price)
+		if (!tokenDataFromJup) {
+			return null
+		}
 
 		return {
 			address: pair.baseToken.address,
 			name: pair.baseToken.symbol,
-			initialPrice: price?.data[pair.baseToken.address].price || 0,
-			currentPrice: price?.data[pair.baseToken.address].price || 0,
+			initialPrice: tokenDataFromJup.price || 0,
+			currentPrice: tokenDataFromJup.price || 0,
 			startDate: new Date(),
 			lastUpdateDate: new Date(),
 			parsedLink: channelId,

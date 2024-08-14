@@ -2,7 +2,7 @@
 
 import dotenv from 'dotenv';
 import {TelegramUserServiceV2} from './telegram/services/TelegramUserServiceV2';
-import {SubscriberService} from './subscriber/service/SubscriberService';
+// import {SubscriberService} from './subscriber/service/SubscriberService';
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ const init = async () => {
 
 
 	try {
-		await SubscriberService.initialization();
+		// await SubscriberService.initialization();
 		await telegramUserService.start();
 
 		console.log('Listening for new messages...');

@@ -114,7 +114,7 @@ export class SubscriberService {
 		}
 
 		const price = await JupiterService.getTokenPrice(pair.baseToken.address);
-		
+
 		const tokenDataFromJup = price?.data[pair.baseToken.address];
 
 		if (!tokenDataFromJup) {

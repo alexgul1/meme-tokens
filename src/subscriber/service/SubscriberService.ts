@@ -151,6 +151,14 @@ export class SubscriberService {
 		for (const token of finishedTokensInActiveDB) {
 			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
 		}
+	}
 
+	public static async putIntoDBInfoMessage(channel: string, existsInMap: boolean, address: string|undefined) {
+		await this.mongoDBInstance.insertTelegramMessageInfo({
+			channel,
+			existsInMap,
+			address,
+			date: new Date()
+		})
 	}
 }

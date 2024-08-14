@@ -50,7 +50,6 @@ export class TelegramUserServiceV2 {
 	private async handleUpdates() {
 		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({}))
 		this.client.addEventHandler(this.editedMessageHandle.bind(this), new EditedMessage({}))
-
 	}
 
 	public async start():Promise<void> {
@@ -61,6 +60,8 @@ export class TelegramUserServiceV2 {
 	public async eventHandle(event: NewMessageEvent) {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
+
+		await SubscriberService.putIntoDBInfoMessage(channelId, this.chatIds.has(channelId), extractSolOrPairAddress(message.message)?.address)
 
 		if (this.chatIds.has(channelId)) {
 
@@ -83,6 +84,8 @@ export class TelegramUserServiceV2 {
 	public async editedMessageHandle(event: EditedMessageEvent) {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
+
+		await SubscriberService.putIntoDBInfoMessage(channelId, this.chatIds.has(channelId), extractSolOrPairAddress(message.message)?.address)
 
 		if (this.chatIds.has(channelId)) {
 			const editDateTimestamp = message.editDate;

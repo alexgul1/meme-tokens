@@ -12,6 +12,7 @@ export class MongoService implements IMongoService<Token> {
 	private readonly dbName: string;
 	private readonly collectionName: string;
 	private readonly finishedCollectionName: string;
+	private readonly testTGCollectionName: string;
 
 
 	constructor() {
@@ -19,7 +20,7 @@ export class MongoService implements IMongoService<Token> {
 		this.dbName = process.env.DB_NAME as string;
 		this.collectionName = process.env.COLLECTION_NAME as string;
 		this.finishedCollectionName = process.env.FINISHED_COLLECTION_NAME as string;
-
+		this.testTGCollectionName = process.env.TEST_TG_COLLECTION_NAME as string;
 
 
 		if (!this.uri || !this.dbName || !this.collectionName || !this.finishedCollectionName) {
@@ -106,6 +107,18 @@ export class MongoService implements IMongoService<Token> {
 			await finishedCollection.insertOne(activeToken);
 			await collection.deleteOne({ [key]: value });
 		}
+	}
+
+	public async insertTelegramMessageInfo(object: Record<string, unknown>): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+
+		if (!this.testTGCollectionName) {
+			return ;
+		}
+		const collection: Collection<unknown> = this.db.collection(this.testTGCollectionName);
+		await collection.insertOne(object);
 	}
 
 	public async close(): Promise<void> {

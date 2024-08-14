@@ -61,7 +61,7 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		await SubscriberService.putIntoDBInfoMessage(channelId, this.chatIds.has(channelId), extractSolOrPairAddress(message.message)?.address)
+		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolOrPairAddress(message.message)?.address)
 
 		if (this.chatIds.has(channelId)) {
 
@@ -85,7 +85,7 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		await SubscriberService.putIntoDBInfoMessage(channelId, this.chatIds.has(channelId), extractSolOrPairAddress(message.message)?.address)
+		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolOrPairAddress(message.message)?.address)
 
 		if (this.chatIds.has(channelId)) {
 			const editDateTimestamp = message.editDate;

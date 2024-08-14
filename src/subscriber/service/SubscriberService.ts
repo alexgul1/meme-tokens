@@ -153,12 +153,7 @@ export class SubscriberService {
 		}
 	}
 
-	public static async putIntoDBInfoMessage(channel: string, existsInMap: boolean, address: string|undefined) {
-		await this.mongoDBInstance.insertTelegramMessageInfo({
-			channel,
-			existsInMap,
-			address,
-			date: new Date()
-		})
+	public static async putIntoDBInfoMessage(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
+		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)
 	}
 }

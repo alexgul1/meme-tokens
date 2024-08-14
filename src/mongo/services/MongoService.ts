@@ -109,7 +109,7 @@ export class MongoService implements IMongoService<Token> {
 		}
 	}
 
-	public async insertTelegramMessageInfo(object: Record<string, unknown>): Promise<void> {
+	public async insertTelegramMessageInfo(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
@@ -117,8 +117,21 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.testTGCollectionName) {
 			return ;
 		}
+
 		const collection: Collection = this.db.collection(this.testTGCollectionName);
-		await collection.insertOne(object);
+
+		const entity = (await collection.findOne({ 'key': 'telegram' }))!;
+
+
+		const update = {
+			...(isIncluded ? {includeCount: ++entity.includeCount} : {excludeCount: ++entity.excludeCount}),
+			...(hasTokenAddress && {tokenAddressCount: ++entity.tokenAddressCount}),
+			date: new Date()
+		}
+
+		await collection.updateOne({ 'key': 'telegram' }, {
+			$set: update
+		});
 	}
 
 	public async close(): Promise<void> {

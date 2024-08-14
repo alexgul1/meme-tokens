@@ -15,6 +15,11 @@ import long = Api.long;
 import MessageEntityTextUrl = Api.MessageEntityTextUrl;
 import Channel = Api.Channel;
 
+// Sleep function that returns a Promise
+function sleep(ms: number): Promise<void> {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export class TelegramUserServiceV2 {
 	private client: TelegramClient;
 	private readonly session: StoreSession;
@@ -59,6 +64,32 @@ export class TelegramUserServiceV2 {
 
 	}
 
+	private async joinChannelWithRetry( channelUsername: string, retries: number = 3): Promise<void> {
+		for (let attempt = 0; attempt < retries; attempt++) {
+			try {
+				// Attempt to join the channel
+				await this.client.invoke(
+					new Api.channels.JoinChannel({
+						channel: channelUsername,
+					})
+				);
+				console.log(`Successfully joined the channel: ${channelUsername}`);
+				return; // Exit the function if successful
+			} catch (error) {
+				if (error.message.includes("FLOOD_WAIT")) {
+					const waitTime = parseInt(error.message.match(/FLOOD_WAIT (\d+)/)![1], 10);
+					console.log(`Flood wait error. Waiting for ${waitTime} seconds before retrying.`);
+					await sleep(waitTime * 1000); // Convert seconds to milliseconds
+				} else {
+					console.error(`Failed to join the channel: ${error}`);
+					return; // Exit the function on other errors
+				}
+			}
+		}
+
+		console.error("Max retries reached. Could not join the channel.");
+	}
+
 
 	private async testMessagesFromChannel() {
 		const chatIds = new Set<string>();
@@ -91,19 +122,7 @@ export class TelegramUserServiceV2 {
 							try {
 								const newChannelEntity = await this.client.getEntity(channelName) as Channel;
 
-								try {
-									// Join the public channel by username
-									await this.client.invoke(
-										new Api.channels.JoinChannel({
-											channel: newChannelEntity.username,
-										})
-									);
-									console.log(`Successfully joined the channel: ${newChannelEntity.username}`);
-								} catch (error) {
-									console.error(`Failed to join the channel: ${error}`);
-
-									console.log(error)
-								}
+								await this.joinChannelWithRetry(newChannelEntity.username!)
 								chatIds.add(newChannelEntity.id.toString());
 							} catch (error) {
 								console.error(`Error retrieving entity for ${channelName}:`, error);

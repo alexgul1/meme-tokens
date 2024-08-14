@@ -18,6 +18,9 @@ export class DexscreenerService {
 	static async getTokenPairsByAddress(tokenAddress: string): Promise<ITokenPairs|null> {
 		try {
 			const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+
+			console.log(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`)
+
 			return await response.json() as ITokenPairs;
 		} catch (error) {
 			console.error('Error fetching token info from Dexscreener:', error);

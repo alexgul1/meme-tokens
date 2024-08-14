@@ -117,7 +117,11 @@ export class SubscriberService {
 	}
 
 	private static async generateNewTokenData(address: string, channelId: string): Promise<Token | null> {
+		console.log(address)
+
 		const pair = await DexscreenerService.getTokenPair(address) as IPair;
+
+		console.log(pair)
 
 		if (!pair) {
 			return null

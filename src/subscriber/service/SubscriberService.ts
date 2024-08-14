@@ -34,9 +34,14 @@ export class SubscriberService {
 
 		if (tokenInfoFromFinishedCollection) {
 			console.log('We have this combination in finished collection', tokenAddress, channelId)
+
+			return;
 		}
 
+
 		let tokenInfo = await this.mongoDBInstance.getEntity('address', tokenAddress);
+
+		console.log('tokenInfo before generate',tokenInfo)
 
 		if (!tokenInfo) {
 			tokenInfo = await this.generateNewTokenData(tokenAddress, channelId);
@@ -46,6 +51,9 @@ export class SubscriberService {
 			}
 
 		}
+
+		console.log('tokenInfo after generate',tokenInfo)
+
 
 		if (tokenInfo) {
 			JupiterService.subscribeToTokenPriceV2(tokenAddress, (data) => this.updateTokenPriceInDB(tokenInfo!, data))
@@ -57,6 +65,8 @@ export class SubscriberService {
 
 	public static async subscribeToPair(pairdAddress: string, channelId: string) {
 		const tokenInfo = await DexscreenerService.getTokenByPair(pairdAddress) as IPair;
+
+		console.log('subscribeToPair', tokenInfo)
 
 		if (!tokenInfo?.baseToken) {
 			return
@@ -114,7 +124,7 @@ export class SubscriberService {
 		}
 
 		const price = await JupiterService.getTokenPrice(pair.baseToken.address);
-		
+
 		const tokenDataFromJup = price?.data[pair.baseToken.address];
 
 		if (!tokenDataFromJup) {

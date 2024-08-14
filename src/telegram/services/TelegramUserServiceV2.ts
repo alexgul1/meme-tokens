@@ -62,8 +62,6 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		console.log(channelId, this.chatIds.has(channelId))
-
 		if (this.chatIds.has(channelId)) {
 
 			const extractedData = extractSolOrPairAddress(message.message);

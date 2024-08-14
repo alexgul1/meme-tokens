@@ -19,7 +19,6 @@ export class DexscreenerService {
 		try {
 			const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
 
-			console.log(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`)
 
 			return await response.json() as ITokenPairs;
 		} catch (error) {

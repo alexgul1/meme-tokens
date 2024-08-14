@@ -41,7 +41,6 @@ export class SubscriberService {
 
 		let tokenInfo = await this.mongoDBInstance.getEntity('address', tokenAddress);
 
-		console.log('tokenInfo before generate',tokenInfo)
 
 		if (!tokenInfo) {
 			tokenInfo = await this.generateNewTokenData(tokenAddress, channelId);
@@ -51,8 +50,6 @@ export class SubscriberService {
 			}
 
 		}
-
-		console.log('tokenInfo after generate',tokenInfo)
 
 
 		if (tokenInfo) {
@@ -65,8 +62,6 @@ export class SubscriberService {
 
 	public static async subscribeToPair(pairdAddress: string, channelId: string) {
 		const tokenInfo = await DexscreenerService.getTokenByPair(pairdAddress) as IPair;
-
-		console.log('subscribeToPair', tokenInfo)
 
 		if (!tokenInfo?.baseToken) {
 			return
@@ -117,13 +112,11 @@ export class SubscriberService {
 	}
 
 	private static async generateNewTokenData(address: string, channelId: string): Promise<Token | null> {
-		console.log(address)
-
 		const pair = await DexscreenerService.getTokenPair(address) as IPair;
 
-		console.log(pair)
-
 		if (!pair) {
+			console.log(`No pair from DexscreenerService for ${address}`)
+
 			return null
 		}
 
@@ -132,6 +125,8 @@ export class SubscriberService {
 		const tokenDataFromJup = price?.data[pair.baseToken.address];
 
 		if (!tokenDataFromJup) {
+			console.log(`No price from JupiterService for ${address}`)
+
 			return null
 		}
 

@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, ConnectionOptions } from 'mongodb';
+import {MongoClient, Db, Collection, ConnectionOptions} from 'mongodb';
 import { IMongoService } from './IMongoService';
 import { Token } from '../types/Token';
 import dotenv from 'dotenv';
@@ -117,7 +117,7 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.testTGCollectionName) {
 			return ;
 		}
-		const collection: Collection<unknown> = this.db.collection(this.testTGCollectionName);
+		const collection: Collection = this.db.collection(this.testTGCollectionName);
 		await collection.insertOne(object);
 	}
 

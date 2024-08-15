@@ -16,6 +16,7 @@ export class TelegramUserServiceV2 {
 	private readonly apiId: number;
 	private readonly apiHash: string;
 	private readonly chatIds: Set<string>;
+	private readonly processedAddresses: Set<string>;
 
 	constructor() {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
@@ -31,6 +32,8 @@ export class TelegramUserServiceV2 {
 		}
 
 		console.log('SUBSCRIBED TO', this.chatIds)
+
+		this.processedAddresses = new Set();
 
 
 		this.session = new StoreSession('my_session')
@@ -64,12 +67,17 @@ export class TelegramUserServiceV2 {
 		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolOrPairAddress(message.message)?.address)
 
 		if (this.chatIds.has(channelId)) {
-
 			const extractedData = extractSolOrPairAddress(message.message);
 
 			if (!extractedData) {
 				return;
 			}
+
+			if (this.processedAddresses.has(extractedData.address)) {
+				console.log('Now we processed this address', extractedData.address)
+			}
+
+			this.processedAddresses.add(extractedData.address);
 
 			// Depending on whether it's a token or pair address, handle it appropriately
 			if (extractedData.type === 'token') {
@@ -78,6 +86,8 @@ export class TelegramUserServiceV2 {
 				// Handle the pair address if needed, or treat it the same as a token address
 				await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::pair`); // Example: different handling
 			}
+
+			this.processedAddresses.delete(extractedData.address);
 		}
 	}
 
@@ -110,12 +120,18 @@ export class TelegramUserServiceV2 {
 					return;
 				}
 
+				if (this.processedAddresses.has(extractedData.address)) {
+					console.log('Now we processed this address', extractedData.address)
+				}
+
 				// Handle based on whether it's a token or pair address
 				if (extractedData.type === 'token') {
 					await SubscriberService.subscribeToToken(extractedData.address, `${channelId}::edited`);
 				} else if (extractedData.type === 'pair') {
 					await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
 				}
+
+				this.processedAddresses.delete(extractedData.address);
 			}
 		}
 	}

@@ -3,6 +3,7 @@ import {Token} from '../../mongo/types/Token';
 import {IPair} from '../../dexscreener/services/IPair';
 import {IJupToken, JupiterService} from '../../dex/services/JupiterService';
 import {DexscreenerService} from '../../dexscreener/services/DexscreenerService';
+import {isCurrentDateGreaterThanEndDate} from '../utils/isCurrentDateGreaterThanEndDate';
 
 export class SubscriberService {
 	private static mongoDBInstance: MongoService
@@ -32,7 +33,7 @@ export class SubscriberService {
 			parsedLink: channelId,
 		})
 
-		if (tokenInfoFromFinishedCollection) {
+		if (tokenInfoFromFinishedCollection && !isCurrentDateGreaterThanEndDate(tokenInfoFromFinishedCollection, 2)) {
 			console.log('We have this combination in finished collection', tokenAddress, channelId)
 
 			return;

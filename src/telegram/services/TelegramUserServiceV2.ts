@@ -5,7 +5,7 @@ import {StoreSession} from 'telegram/sessions';
 import input from 'input';
 import {NewMessage, NewMessageEvent,} from 'telegram/events';
 import PeerChannel = Api.PeerChannel;
-import {extractSolOrPairAddress} from '../utils/addressExtractor';
+import {extractSolAddress} from '../utils/addressExtractor';
 
 import {SubscriberService} from '../../subscriber/service/SubscriberService';
 import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
@@ -56,7 +56,7 @@ export class TelegramUserServiceV2 {
 		this.client.addEventHandler(this.editedMessageHandle.bind(this), new EditedMessage({}))
 	}
 
-	public async start():Promise<void> {
+	public async start(): Promise<void> {
 		await this.connect();
 		await this.handleUpdates()
 	}
@@ -65,32 +65,25 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolOrPairAddress(message.message)?.address)
+		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
-			const extractedData = extractSolOrPairAddress(message.message);
+			const extractedData = extractSolAddress(message.message);
 
 			if (!extractedData) {
 				return;
 			}
 
-			if (this.processedAddresses.has(extractedData.address)) {
-				console.log('Now we processed this address', extractedData.address)
+			if (this.processedAddresses.has(extractedData)) {
+				console.log('Now we processed this address', extractedData)
 			}
 
-			this.processedAddresses.add(extractedData.address);
+			this.processedAddresses.add(extractedData);
 
-			// Depending on whether it's a token or pair address, handle it appropriately
-			if (extractedData.type === 'token') {
-				await SubscriberServiceV2.subscribeToToken(extractedData.address, channelId);
-				await SubscriberService.subscribeToToken(extractedData.address, channelId);
-			} else if (extractedData.type === 'pair') {
-				// Handle the pair address if needed, or treat it the same as a token address
-				await SubscriberServiceV2.subscribeToPair(extractedData.address, `${channelId}::pair`); // Example: different handling
-				await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::pair`); // Example: different handling
-			}
+			await SubscriberServiceV2.subscribeToTokenV2(extractedData, channelId);
+			await SubscriberService.subscribeToTokenV2(extractedData, channelId);
 
-			this.processedAddresses.delete(extractedData.address);
+			this.processedAddresses.delete(extractedData);
 		}
 	}
 
@@ -98,7 +91,7 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolOrPairAddress(message.message)?.address)
+		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
 			const editDateTimestamp = message.editDate;
@@ -117,26 +110,22 @@ export class TelegramUserServiceV2 {
 
 			// Check if the difference is less than 3 minutes (180,000 milliseconds)
 			if (timeDifferenceInMilliseconds < 180000) {
-				const extractedData = extractSolOrPairAddress(message.message);
+				const extractedData = extractSolAddress(message.message);
 
 				if (!extractedData) {
 					return;
 				}
 
-				if (this.processedAddresses.has(extractedData.address)) {
-					console.log('Now we processed this address', extractedData.address)
+				if (this.processedAddresses.has(extractedData)) {
+					console.log('Now we processed this address', extractedData)
 				}
 
 				// Handle based on whether it's a token or pair address
-				if (extractedData.type === 'token') {
-					await SubscriberServiceV2.subscribeToToken(extractedData.address, `${channelId}::edited`);
-					await SubscriberService.subscribeToToken(extractedData.address, `${channelId}::edited`);
-				} else if (extractedData.type === 'pair') {
-					await SubscriberServiceV2.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
-					await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
-				}
+				await SubscriberServiceV2.subscribeToTokenV2(extractedData, `${channelId}::edited`);
+				await SubscriberService.subscribeToTokenV2(extractedData, `${channelId}::edited`);
 
-				this.processedAddresses.delete(extractedData.address);
+
+				this.processedAddresses.delete(extractedData);
 			}
 		}
 	}

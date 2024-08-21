@@ -10,6 +10,8 @@ export class SolanaService {
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
 
 	public static async subscribeToPriceUpdates(poolID: string, callback: PriceUpdateCallback): Promise<void> {
+		console.log(this.connection, process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com')
+
 		const publicKey = new PublicKey(poolID);
 
 		// Check if the pool is already subscribed
@@ -81,6 +83,8 @@ export class SolanaService {
 		if (!price) {
 			return
 		}
+
+		console.log(price)
 
 		// Trigger the callback with the new price
 		const callback = this.callbacks.get(poolID);

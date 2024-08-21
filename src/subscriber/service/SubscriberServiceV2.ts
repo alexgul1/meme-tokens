@@ -20,18 +20,8 @@ export class SubscriberServiceV2 {
 		this.subscribeToActiveFromDB();
 	}
 
-	public static async subscribeToToken(tokenAddress: string, channelId: string) {
-		const pair = await DexscreenerService.getTokenPair(tokenAddress) as IPair;
-
-		if (!pair?.pairAddress) {
-			return
-		}
-
-		await this.subscribeToPair(pair.pairAddress, channelId)
-	}
-
-	public static async subscribeToPair(pairdAddress: string, channelId: string) {
-		const tokenInfo = await DexscreenerService.getTokenByPair(pairdAddress) as IPair;
+	public static async subscribeToTokenV2(tokenAddress: string, channelId: string) {
+		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
 		if (!tokenInfo) {
 			return
@@ -62,7 +52,6 @@ export class SubscriberServiceV2 {
 			SolanaService.subscribeToPriceUpdates(tokenInfo.pairAddress, (price) => this.updateTokenPriceInDB(tokenInfoFromDB!, price))
 		}
 	}
-
 
 	public static async subscribeToActiveFromDB() {
 		const activeSubsInDB = await this.mongoDBInstance.getEntitiesByValue('status', 'InProgress')

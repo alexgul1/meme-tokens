@@ -28,6 +28,17 @@ export class DexscreenerService {
 		}
 	}
 
+	static async searchTokenByAddress(tokenAddress: string): Promise<ITokenPairs|null> {
+		try {
+			const response = await fetch(`https://api.dexscreener.com/latest/dex/search/?q=${tokenAddress}`);
+
+			return await response.json() as ITokenPairs;
+		} catch (error) {
+			console.error('Error fetching token info from Dexscreener:', error);
+			return null;
+		}
+	}
+
 	static async getTokenPair(tokenAddress: string): Promise<unknown>{
 		const tokenPairs = await this.getTokenPairsByAddress(tokenAddress);
 
@@ -51,5 +62,16 @@ export class DexscreenerService {
 	private static isTokenSolPairOnRaydium(pair: IPair) {
 		return pair.chainId === 'solana' && pair.dexId === 'raydium' &&
 			(pair.baseToken.address === this.SOLAddress || pair.quoteToken.address === this.SOLAddress)
+	}
+
+
+	static async getTokenFromSearch(address: string):Promise<IPair|undefined>{
+		const pairs = await this.searchTokenByAddress(address)
+
+		if (!pairs?.pairs) {
+			return
+		}
+
+		return pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
 	}
 }

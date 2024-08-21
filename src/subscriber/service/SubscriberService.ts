@@ -27,7 +27,14 @@ export class SubscriberService {
 		JupiterService.fetchTokensPriceByTimeoutV2()
 	}
 
-	public static async subscribeToToken(tokenAddress: string, channelId: string) {
+	public static async subscribeToTokenV2(tokenAddress: string, channelId: string) {
+		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
+
+		if (!tokenInfo) {
+			return
+		}
+
+
 		const tokenInfoFromFinishedCollection = await this.mongoDBInstance.getEntityFromFinishedCollection({
 			'address': tokenAddress,
 			parsedLink: channelId,
@@ -40,37 +47,25 @@ export class SubscriberService {
 		}
 
 
-		let tokenInfo = await this.mongoDBInstance.getEntity('address', tokenAddress);
+		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenAddress);
 
-		if (!tokenInfo) {
-			tokenInfo = await this.generateNewTokenData(tokenAddress, channelId);
+		if (!tokenInfoFromDB) {
+			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, channelId);
 
-			if (tokenInfo) {
-				await this.putNewTokenToDB(tokenInfo)
+			if (tokenInfoFromDB) {
+				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
 
 		}
 
 
-		if (tokenInfo) {
-			JupiterService.subscribeToTokenPriceV2(tokenAddress, (data) => this.updateTokenPriceInDB(tokenInfo!, data))
+		if (tokenInfoFromDB) {
+			JupiterService.subscribeToTokenPriceV2(tokenAddress, (data) => this.updateTokenPriceInDB(tokenInfoFromDB!, data))
 
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			// JupiterService.subscribeToTokenPrice([tokenAddress], (data) => this.updateTokenPriceInDB(tokenInfo!, data.data[tokenAddress]))
 		}
 	}
-
-	public static async subscribeToPair(pairdAddress: string, channelId: string) {
-		const tokenInfo = await DexscreenerService.getTokenByPair(pairdAddress) as IPair;
-
-		if (!tokenInfo?.baseToken) {
-			return
-		}
-
-		await this.subscribeToToken(tokenInfo.baseToken.address, channelId)
-
-	}
-
 
 	public static async subscribeToActiveFromDB() {
 		const activeSubsInDB = await this.mongoDBInstance.getEntitiesByValue('status', 'InProgress')
@@ -111,28 +106,20 @@ export class SubscriberService {
 		}
 	}
 
-	private static async generateNewTokenData(address: string, channelId: string): Promise<Token | null> {
-		const pair = await DexscreenerService.getTokenPair(address) as IPair;
+	private static async generateNewTokenData(tokenInfo: IPair, channelId: string): Promise<Token | null> {
+		const price = await JupiterService.getTokenPrice(tokenInfo.baseToken.address);
 
-		if (!pair) {
-			console.log(`No pair from DexscreenerService for ${address}`)
-
-			return null
-		}
-
-		const price = await JupiterService.getTokenPrice(pair.baseToken.address);
-
-		const tokenDataFromJup = price?.data[pair.baseToken.address];
+		const tokenDataFromJup = price?.data[tokenInfo.baseToken.address];
 
 		if (!tokenDataFromJup) {
-			console.log(`No price from JupiterService for ${address}`)
+			console.log(`No price from JupiterService for ${tokenInfo.baseToken.address}`)
 
 			return null
 		}
 
 		return {
-			address: pair.baseToken.address,
-			name: pair.baseToken.symbol,
+			address: tokenInfo.baseToken.address,
+			name: tokenInfo.baseToken.symbol,
 			initialPrice: tokenDataFromJup.price || 0,
 			currentPrice: tokenDataFromJup.price || 0,
 			startDate: new Date(),

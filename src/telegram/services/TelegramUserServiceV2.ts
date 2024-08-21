@@ -9,6 +9,7 @@ import {extractSolOrPairAddress} from '../utils/addressExtractor';
 
 import {SubscriberService} from '../../subscriber/service/SubscriberService';
 import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
+import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 
 export class TelegramUserServiceV2 {
 	private client: TelegramClient;
@@ -81,9 +82,11 @@ export class TelegramUserServiceV2 {
 
 			// Depending on whether it's a token or pair address, handle it appropriately
 			if (extractedData.type === 'token') {
+				await SubscriberServiceV2.subscribeToToken(extractedData.address, channelId);
 				await SubscriberService.subscribeToToken(extractedData.address, channelId);
 			} else if (extractedData.type === 'pair') {
 				// Handle the pair address if needed, or treat it the same as a token address
+				await SubscriberServiceV2.subscribeToPair(extractedData.address, `${channelId}::pair`); // Example: different handling
 				await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::pair`); // Example: different handling
 			}
 
@@ -126,8 +129,10 @@ export class TelegramUserServiceV2 {
 
 				// Handle based on whether it's a token or pair address
 				if (extractedData.type === 'token') {
+					await SubscriberServiceV2.subscribeToToken(extractedData.address, `${channelId}::edited`);
 					await SubscriberService.subscribeToToken(extractedData.address, `${channelId}::edited`);
 				} else if (extractedData.type === 'pair') {
+					await SubscriberServiceV2.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
 					await SubscriberService.subscribeToPair(extractedData.address, `${channelId}::edited::pair`);
 				}
 

@@ -1,7 +1,9 @@
 import {ITokenPairs} from './ITokenPairs';
-import {WebSocketService} from '../../websocket/WebSocketService';
+import {IPair} from './IPair';
 
 export class DexscreenerService {
+	private static SOLAddress = 'So11111111111111111111111111111111111111112';
+
 	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs|null> {
 		try {
 			const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${pairAddress}`);
@@ -19,7 +21,6 @@ export class DexscreenerService {
 		try {
 			const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
 
-
 			return await response.json() as ITokenPairs;
 		} catch (error) {
 			console.error('Error fetching token info from Dexscreener:', error);
@@ -34,7 +35,7 @@ export class DexscreenerService {
 			return
 		}
 
-		return tokenPairs.pairs.find((pair)=> pair.chainId === 'solana' && pair.dexId === 'raydium')
+		return tokenPairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
 	}
 
 	static async getTokenByPair(pairAddress: string):Promise<unknown>{
@@ -44,32 +45,11 @@ export class DexscreenerService {
 			return
 		}
 
-		return pairs.pairs.find((pair)=> pair.chainId === 'solana' && pair.dexId === 'raydium')
-
+		return pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
 	}
 
-	static async subscribeToPrice(pairAddress: string): Promise<void>{
-		if (!pairAddress) {
-			return ;
-		}
-
-		const headers = {
-			'Host': 'io.dexscreener.com',
-			'Connection': 'Upgrade',
-			'Pragma': 'no-cache',
-			'Cache-Control': 'no-cache',
-			'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-			'Upgrade': 'websocket',
-			'Origin': 'https://dexscreener.com',
-			'Sec-WebSocket-Version': 13,
-			'Accept-Encoding': 'gzip, deflate, br, zstd',
-			'Accept-Language': 'en-US,en;q=0.9,ru-RU;q=0.8,ru;q=0.7,uk;q=0.6',
-		};
-
-
-		const wsUrl =
-			'wss://io.dexscreener.com/dex/screener/pairs/h24/1?rankBy[key]=trendingScoreH24&rankBy[order]=desc&filters[chainIds][0]=solana'; // Adjust URL as needed
-
-		new WebSocketService(wsUrl, headers);
+	private static isTokenSolPairOnRaydium(pair: IPair) {
+		return pair.chainId === 'solana' && pair.dexId === 'raydium' &&
+			(pair.baseToken.address === this.SOLAddress || pair.quoteToken.address === this.SOLAddress)
 	}
 }

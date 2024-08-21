@@ -42,7 +42,6 @@ export class SubscriberService {
 
 		let tokenInfo = await this.mongoDBInstance.getEntity('address', tokenAddress);
 
-
 		if (!tokenInfo) {
 			tokenInfo = await this.generateNewTokenData(tokenAddress, channelId);
 

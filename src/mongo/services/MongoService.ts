@@ -12,28 +12,47 @@ export class MongoService implements IMongoService<Token> {
 	private readonly dbName: string;
 	private readonly collectionName: string;
 	private readonly finishedCollectionName: string;
+	private readonly collectionNameV2: string;
+	private readonly finishedCollectionNameV2: string;
 	private readonly testTGCollectionName: string;
+	private readonly version: number;
 
 
-	constructor() {
+	constructor(version = 1) {
 		this.uri = process.env.MONGODB_URI as string;
 		this.dbName = process.env.DB_NAME as string;
 		this.collectionName = process.env.COLLECTION_NAME as string;
 		this.finishedCollectionName = process.env.FINISHED_COLLECTION_NAME as string;
+		this.collectionNameV2 = process.env.COLLECTION_NAME_V2 as string;
+		this.finishedCollectionNameV2 = process.env.FINISHED_COLLECTION_NAME_V2 as string;
+
 		this.testTGCollectionName = process.env.TEST_TG_COLLECTION_NAME as string;
 
+		this.version = version;
 
 		if (!this.uri || !this.dbName || !this.collectionName || !this.finishedCollectionName) {
 			throw new Error('Environment variables MONGODB_URI, DB_NAME, FINISHED_COLLECTION_NAME and COLLECTION_NAME must be set');
 		}
 	}
 
+	private get _collectionName() {
+		return this.version === 1 ? this.collectionName : this.collectionNameV2;
+	}
+
+	private get _finishedCollectionName() {
+		return this.version === 1 ? this.finishedCollectionName : this.finishedCollectionNameV2;
+	}
+
+
 	private async initializeClient(): Promise<void> {
 		if (!MongoService.client) {
 			MongoService.client = new MongoClient(this.uri, {} as ConnectionOptions);
 			await MongoService.client.connect();
-			this.db = MongoService.client.db(this.dbName);
 			console.log('Connected to MongoDB');
+		}
+
+		if (!this.db) {
+			this.db = MongoService.client.db(this.dbName);
 		}
 	}
 
@@ -57,7 +76,7 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
-		const collection: Collection<Token> = this.db.collection(this.collectionName);
+		const collection: Collection<Token> = this.db.collection(this._collectionName);
 		await collection.insertOne(entity);
 	}
 
@@ -65,7 +84,7 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
-		const collection: Collection<Token> = this.db.collection(this.collectionName);
+		const collection: Collection<Token> = this.db.collection(this._collectionName);
 		await collection.updateOne({ [key]: value }, { $set: update });
 	}
 
@@ -73,7 +92,7 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
-		const collection: Collection<Token> = this.db.collection(this.collectionName);
+		const collection: Collection<Token> = this.db.collection(this._collectionName);
 		return await collection.findOne({ [key]: value });
 	}
 
@@ -81,7 +100,7 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
-		const collection: Collection<Token> = this.db.collection(this.collectionName);
+		const collection: Collection<Token> = this.db.collection(this._collectionName);
 		return await collection.find({ [key]: value }).toArray();
 	}
 
@@ -89,7 +108,7 @@ export class MongoService implements IMongoService<Token> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
-		const collection: Collection<Token> = this.db.collection(this.finishedCollectionName);
+		const collection: Collection<Token> = this.db.collection(this._finishedCollectionName);
 		return await collection.findOne(object);
 	}
 
@@ -98,11 +117,11 @@ export class MongoService implements IMongoService<Token> {
 			throw new Error('Database connection is not established');
 		}
 
-		const collection: Collection<Token> = this.db.collection(this.collectionName);
+		const collection: Collection<Token> = this.db.collection(this._collectionName);
 		const activeToken = await collection.findOne({ [key]: value });
 
 		if (activeToken?.status === 'Finished') {
-			const finishedCollection = this.db.collection(this.finishedCollectionName);
+			const finishedCollection = this.db.collection(this._finishedCollectionName);
 
 			await finishedCollection.insertOne(activeToken);
 			await collection.deleteOne({ [key]: value });

@@ -9,6 +9,8 @@ export interface IPair {
         symbol: string;
     };
     quoteToken: {
+        address: string;
+        name: string;
         symbol: string;
     };
     priceNative: string;

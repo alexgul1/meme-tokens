@@ -1,0 +1,126 @@
+import {MongoService} from '../../mongo/services/MongoService';
+import {Token} from '../../mongo/types/Token';
+import {IPair} from '../../dexscreener/services/IPair';
+import {DexscreenerService} from '../../dexscreener/services/DexscreenerService';
+import {isCurrentDateGreaterThanEndDate} from '../utils/isCurrentDateGreaterThanEndDate';
+import {SolanaService} from '../../solana/services/SolanaService';
+
+export class SubscriberServiceV2 {
+	private static mongoDBInstance: MongoService
+	private static maxPositiveROE: number;
+	private static maxNegativeROE: number
+
+	public static async initialization() {
+		this.maxPositiveROE = parseFloat(process.env.MAX_POSITIVE_ROE as string) || 15
+		this.maxNegativeROE = (parseFloat(process.env.MAX_NEGATIVE_ROE as string) || 10) * -1;
+
+		this.mongoDBInstance = new MongoService(2);
+		await this.mongoDBInstance.connect();
+
+		this.subscribeToActiveFromDB();
+	}
+
+	public static async subscribeToToken(tokenAddress: string, channelId: string) {
+		const pair = await DexscreenerService.getTokenPair(tokenAddress) as IPair;
+
+		if (!pair?.pairAddress) {
+			return
+		}
+
+		await this.subscribeToPair(pair.pairAddress, channelId)
+	}
+
+	public static async subscribeToPair(pairdAddress: string, channelId: string) {
+		const tokenInfo = await DexscreenerService.getTokenByPair(pairdAddress) as IPair;
+
+		if (!tokenInfo) {
+			return
+		}
+
+		const tokenInfoFromFinishedCollection = await this.mongoDBInstance.getEntityFromFinishedCollection({
+			'address': tokenInfo.pairAddress,
+			parsedLink: channelId,
+		})
+
+		if (tokenInfoFromFinishedCollection && !isCurrentDateGreaterThanEndDate(tokenInfoFromFinishedCollection, 2)) {
+			console.log('SubscriberServiceV2: We have this combination in finished collection', tokenInfo.pairAddress, channelId)
+
+			return;
+		}
+
+		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
+
+		if (!tokenInfoFromDB) {
+			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, channelId);
+
+			if (tokenInfoFromDB) {
+				await this.putNewTokenToDB(tokenInfoFromDB)
+			}
+		}
+
+		if (tokenInfoFromDB) {
+			SolanaService.subscribeToPriceUpdates(tokenInfo.pairAddress, (price) => this.updateTokenPriceInDB(tokenInfoFromDB!, price))
+		}
+	}
+
+
+	public static async subscribeToActiveFromDB() {
+		const activeSubsInDB = await this.mongoDBInstance.getEntitiesByValue('status', 'InProgress')
+		console.log('SubscriberServiceV2:', activeSubsInDB)
+
+		activeSubsInDB.forEach((token) => {
+			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.updateTokenPriceInDB(token, data))
+		})
+	}
+
+	public static async putNewTokenToDB(data: Token) {
+		await this.mongoDBInstance.createEntity(data);
+	}
+
+	public static async updateTokenPriceInDB(token: Token, price: number) {
+		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2)
+
+		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
+
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		await this.mongoDBInstance.updateEntity('address', token.address, {
+			currentPrice: price,
+			roe,
+			lastUpdateDate: new Date(),
+			...(shouldBeFinished ? {
+				endDate: new Date(),
+				status: 'Finished',
+				soldPrice: price
+			} : {})
+		})
+
+		if (shouldBeFinished) {
+			await SolanaService.unsubscribeFromPriceUpdates(token.address)
+			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
+		}
+	}
+
+	private static async generateNewTokenData(tokenInfo: IPair, channelId: string): Promise<Token | null> {
+		const price = await SolanaService.getTokenPrice(tokenInfo.pairAddress);
+
+
+		if (!price) {
+			console.log(`SubscriberServiceV2: No price from SolanaService for ${tokenInfo.pairAddress}`)
+
+			return null
+		}
+
+		return {
+			address: tokenInfo.pairAddress,
+			name: tokenInfo.baseToken.symbol,
+			initialPrice: price || 0,
+			currentPrice: price || 0,
+			startDate: new Date(),
+			lastUpdateDate: new Date(),
+			parsedLink: channelId,
+			provider: 'Solana',
+			status: 'InProgress',
+		}
+	}
+}

@@ -2,7 +2,9 @@ import {MongoService} from '../../mongo/services/MongoService';
 import {Token} from '../../mongo/types/Token';
 import {IPair} from '../../dexscreener/services/IPair';
 import {DexscreenerService} from '../../dexscreener/services/DexscreenerService';
-import {isCurrentDateGreaterThanEndDate} from '../utils/isCurrentDateGreaterThanEndDate';
+import {
+	isCurrentDateGreaterThanStartDate
+} from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 
 export class SubscriberServiceV2 {
@@ -32,7 +34,7 @@ export class SubscriberServiceV2 {
 			parsedLink: channelId,
 		})
 
-		if (tokenInfoFromFinishedCollection && !isCurrentDateGreaterThanEndDate(tokenInfoFromFinishedCollection, 2)) {
+		if (tokenInfoFromFinishedCollection) {
 			console.log('SubscriberServiceV2: We have this combination in finished collection', tokenInfo.pairAddress, channelId)
 
 			return;
@@ -70,6 +72,7 @@ export class SubscriberServiceV2 {
 		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2)
 
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
+			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore

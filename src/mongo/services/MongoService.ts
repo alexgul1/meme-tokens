@@ -7,6 +7,7 @@ dotenv.config();
 
 export class MongoService implements IMongoService<Token> {
 	private static client: MongoClient | null = null;
+
 	private db: Db | null = null;
 	private readonly uri: string;
 	private readonly dbName: string;

@@ -11,3 +11,11 @@ export function isCurrentDateGreaterThanEndDate(token: Token, days: number): boo
 
 	return currentDate > daysLater;
 }
+
+
+export function isCurrentDateGreaterThanStartDate(startDate: Date, minutes: number): boolean {
+	const currentDate = new Date();
+	const minutesLater = new Date(startDate.getTime() + minutes * 60 * 1000);
+
+	return currentDate > minutesLater;
+}

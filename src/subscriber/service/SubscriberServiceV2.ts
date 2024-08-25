@@ -112,4 +112,8 @@ export class SubscriberServiceV2 {
 			status: 'InProgress',
 		}
 	}
+
+	public static async putIntoDBInfoMessage(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
+		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)
+	}
 }

@@ -7,7 +7,6 @@ import {NewMessage, NewMessageEvent,} from 'telegram/events';
 import PeerChannel = Api.PeerChannel;
 import {extractSolAddress} from '../utils/addressExtractor';
 
-import {SubscriberService} from '../../subscriber/service/SubscriberService';
 import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 
@@ -65,7 +64,7 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		await SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
 			const extractedData = extractSolAddress(message.message);
@@ -81,7 +80,6 @@ export class TelegramUserServiceV2 {
 			this.processedAddresses.add(extractedData);
 
 			await SubscriberServiceV2.subscribeToTokenV2(extractedData, channelId);
-			await SubscriberService.subscribeToTokenV2(extractedData, channelId);
 
 			this.processedAddresses.delete(extractedData);
 		}
@@ -91,7 +89,7 @@ export class TelegramUserServiceV2 {
 		const message = event.message;
 		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
 
-		await SubscriberService.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		await SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
 			const editDateTimestamp = message.editDate;
@@ -122,7 +120,6 @@ export class TelegramUserServiceV2 {
 
 				// Handle based on whether it's a token or pair address
 				await SubscriberServiceV2.subscribeToTokenV2(extractedData, `${channelId}::edited`);
-				await SubscriberService.subscribeToTokenV2(extractedData, `${channelId}::edited`);
 
 
 				this.processedAddresses.delete(extractedData);

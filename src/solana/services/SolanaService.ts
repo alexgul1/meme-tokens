@@ -10,8 +10,6 @@ export class SolanaService {
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
 
 	public static async subscribeToPriceUpdates(poolID: string, callback: PriceUpdateCallback): Promise<void> {
-		console.log(this.connection, process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com')
-
 		const publicKey = new PublicKey(poolID);
 
 		// Check if the pool is already subscribed
@@ -28,7 +26,7 @@ export class SolanaService {
 			await this.getInitialPoolState(publicKey, poolID);
 
 			// Subscribe to account changes
-			const subscriptionId = this.connection.onAccountChange(publicKey, (info) => this.handleAccountChange(info, poolID));
+			const subscriptionId = this.connection.onAccountChange(publicKey, (info) => this.handleAccountChange(info as AccountInfo<Buffer>, poolID));
 			this.subscriptions.set(poolID, subscriptionId);
 
 			console.log(`Subscribed to pool ${poolID} with subscription ID ${subscriptionId}`);
@@ -37,12 +35,12 @@ export class SolanaService {
 		}
 	}
 
-	public static unsubscribeFromPriceUpdates(poolID: string): void {
+	public static async unsubscribeFromPriceUpdates(poolID: string): Promise<void> {
 		const subscriptionId = this.subscriptions.get(poolID);
 
 
 		if (subscriptionId !== undefined) {
-			this.connection.removeAccountChangeListener(subscriptionId);
+			await this.connection.removeAccountChangeListener(subscriptionId);
 			this.subscriptions.delete(poolID);
 			this.callbacks.delete(poolID);
 			console.log(`Unsubscribed from pool ${poolID}`);
@@ -84,14 +82,10 @@ export class SolanaService {
 			return
 		}
 
-		console.log(price)
-
 		// Trigger the callback with the new price
 		const callback = this.callbacks.get(poolID);
 
 		if (callback) {
-			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-			// @ts-ignore
 			callback(price as number);
 		}
 	}
@@ -108,7 +102,7 @@ export class SolanaService {
 				? baseTokenPrice / quoteTokenPrice
 				: quoteTokenPrice / baseTokenPrice;
 		} catch (error) {
-			console.error('Error processing token price:', error);
+			console.error('Error processing token price:', poolState.baseVault, poolState.quoteVault);
 			return undefined;
 		}
 	}

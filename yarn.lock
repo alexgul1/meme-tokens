@@ -806,9 +806,9 @@
   integrity sha512-hWtVTC2q7hc7xZ/RLbxapMvDMgUnDvKvMOpKal4DrMyfGBUfB1oKaZlIRr6mJL+If3bAP6sV/QneGzF6tJjZDg==
 
 "@types/chai@^4.3.5":
-  version "4.3.17"
-  resolved "https://registry.npmjs.org/@types/chai/-/chai-4.3.17.tgz"
-  integrity sha512-zmZ21EWzR71B4Sscphjief5djsLre50M6lI622OSySTmn9DB3j+C3kWroHfBQWXbOBwbgg/M8CG/hUxDLIloow==
+  version "4.3.18"
+  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.3.18.tgz#dd6a46c9796b0435c13f85e8d44c8ea8e37fa2c1"
+  integrity sha512-2UfJzigyNa8kYTKn7o4hNMPphkxtu4WTJyobK3m4FBpyj7EK5xgtPcOtxLm7Dznk/Qxr0QXn+gQbkg7mCZKdfg==
 
 "@types/connect@^3.4.33":
   version "3.4.38"

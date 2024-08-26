@@ -9,3 +9,4 @@ node_modules/
 .idea/
 .env
 my_session/
+yarn.lock

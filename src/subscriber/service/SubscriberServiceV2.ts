@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 import {MongoService} from '../../mongo/services/MongoService';
 import {Token} from '../../mongo/types/Token';
 import {IPair} from '../../dexscreener/services/IPair';
@@ -6,6 +8,8 @@ import {
 	isCurrentDateGreaterThanStartDate
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
+
+const processingAddresses = new Set();
 
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
@@ -29,12 +33,24 @@ export class SubscriberServiceV2 {
 			return
 		}
 
+		if (processingAddresses.has(tokenInfo.pairAddress)) {
+			Sentry.captureMessage(`SubscriberServiceV2: We processing this token ${tokenInfo.pairAddress}`);
+			console.log('SubscriberServiceV2: We processing this token', tokenInfo.pairAddress, channelId)
+
+			return;
+		}
+
+		processingAddresses.add(tokenInfo.pairAddress)
+
 		const tokenInfoFromFinishedCollection = await this.mongoDBInstance.getEntityFromFinishedCollection({
 			'address': tokenInfo.pairAddress,
 			parsedLink: channelId,
 		})
 
 		if (tokenInfoFromFinishedCollection) {
+			processingAddresses.delete(tokenInfo.pairAddress)
+
+			Sentry.captureMessage(`SubscriberServiceV2: We have this combination in finished collection ${tokenInfo.pairAddress} ${channelId}`);
 			console.log('SubscriberServiceV2: We have this combination in finished collection', tokenInfo.pairAddress, channelId)
 
 			return;
@@ -49,6 +65,8 @@ export class SubscriberServiceV2 {
 				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
 		}
+
+		processingAddresses.delete(tokenInfo.pairAddress)
 
 		if (tokenInfoFromDB) {
 			SolanaService.subscribeToPriceUpdates(tokenInfo.pairAddress, (price) => this.updateTokenPriceInDB(tokenInfoFromDB!, price))
@@ -65,7 +83,11 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async putNewTokenToDB(data: Token) {
-		await this.mongoDBInstance.createEntity(data);
+		try {
+			await this.mongoDBInstance.createEntity(data);
+		} catch (error) {
+			Sentry.captureException({message: 'SubscriberServiceV2: Error when put new token to DB', error});
+		}
 	}
 
 	public static async updateTokenPriceInDB(token: Token, price: number) {
@@ -98,6 +120,7 @@ export class SubscriberServiceV2 {
 
 
 		if (!price) {
+			Sentry.captureMessage(`SubscriberServiceV2: No price from SolanaService for  ${tokenInfo.pairAddress}`);
 			console.log(`SubscriberServiceV2: No price from SolanaService for ${tokenInfo.pairAddress}`)
 
 			return null

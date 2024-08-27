@@ -2,6 +2,7 @@ import {MongoClient, Db, Collection, ConnectionOptions} from 'mongodb';
 import { IMongoService } from './IMongoService';
 import { Token } from '../types/Token';
 import dotenv from 'dotenv';
+import * as Sentry from '@sentry/node';
 
 dotenv.config();
 
@@ -63,6 +64,8 @@ export class MongoService implements IMongoService<Token> {
 				await this.initializeClient();
 				return;
 			} catch (error) {
+				Sentry.captureException({message: 'Failed to connect to MongoDB', error});
+
 				console.error('Failed to connect to MongoDB', error);
 				if (i < retries - 1) {
 					console.log(`Retrying in ${delay / 1000} seconds...`);

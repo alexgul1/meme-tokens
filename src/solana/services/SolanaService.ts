@@ -1,5 +1,6 @@
 import {AccountInfo, Connection, PublicKey, TokenAmount} from '@solana/web3.js';
 import {LIQUIDITY_STATE_LAYOUT_V4, LiquidityStateV4,} from '@raydium-io/raydium-sdk';
+import * as Sentry from '@sentry/node';
 
 type PriceUpdateCallback = (price: number) => void;
 
@@ -31,6 +32,8 @@ export class SolanaService {
 
 			console.log(`Subscribed to pool ${poolID} with subscription ID ${subscriptionId}`);
 		} catch (error) {
+			Sentry.captureException({message: 'Error during subscription', error});
+
 			console.error('Error during subscription:', error);
 		}
 	}
@@ -68,9 +71,13 @@ export class SolanaService {
 				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data);
 				await this.processPoolUpdate(poolState, poolID);
 			} else {
+				Sentry.captureException({message: 'Failed to retrieve pool state on account change.'});
+
 				console.error('Failed to retrieve pool state on account change.');
 			}
 		} catch (error) {
+			Sentry.captureException({message: 'Error during account change processing', error});
+
 			console.error('Error during account change processing:', error);
 		}
 	}
@@ -102,6 +109,9 @@ export class SolanaService {
 				? baseTokenPrice / quoteTokenPrice
 				: quoteTokenPrice / baseTokenPrice;
 		} catch (error) {
+			Sentry.captureException({message: 'Error processing token price', error, baseVault: poolState.baseVault.toString(), quoteVault: poolState.quoteVault.toString()});
+
+
 			console.error('Error processing token price:', poolState.baseVault, poolState.quoteVault);
 			return undefined;
 		}
@@ -117,6 +127,9 @@ export class SolanaService {
 				throw new Error('Initial pool information could not be retrieved.');
 			}
 		} catch (error) {
+			Sentry.captureException({message: 'Error fetching initial pool state', error});
+
+
 			console.error('Error fetching initial pool state:', error);
 		}
 	}

@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import * as Sentry from '@sentry/node';
 // import * as crypto from 'crypto';
 
 export class WebSocketService {
@@ -33,6 +34,9 @@ export class WebSocketService {
 		});
 
 		this.ws.on('error', (error: Error) => {
+			Sentry.captureException({message: 'WebSocket error', error});
+
+
 			console.error('WebSocket error:', error);
 		});
 

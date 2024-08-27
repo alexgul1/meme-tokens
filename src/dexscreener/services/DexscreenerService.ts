@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 import {ITokenPairs} from './ITokenPairs';
 import {IPair} from './IPair';
 
@@ -12,6 +14,8 @@ export class DexscreenerService {
 			return data as ITokenPairs;
 
 		} catch (error) {
+			Sentry.captureException({message: 'Error fetching token info from Dexscreener', error});
+
 			console.error('Error fetching token info from Dexscreener:', error);
 			return null;
 		}
@@ -23,6 +27,8 @@ export class DexscreenerService {
 
 			return await response.json() as ITokenPairs;
 		} catch (error) {
+			Sentry.captureException({message: 'Error fetching token info from Dexscreener', error});
+
 			console.error('Error fetching token info from Dexscreener:', error);
 			return null;
 		}
@@ -34,6 +40,8 @@ export class DexscreenerService {
 
 			return await response.json() as ITokenPairs;
 		} catch (error) {
+			Sentry.captureException({message: 'Error fetching token info from Dexscreener', error});
+
 			console.error('Error fetching token info from Dexscreener:', error);
 			return null;
 		}

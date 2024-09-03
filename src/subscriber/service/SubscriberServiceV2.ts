@@ -9,6 +9,7 @@ import {
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap from '../../swap/service/RaydiumSwap';
+import {SHOULD_SWAP} from '../../index';
 
 const processingAddresses = new Set();
 
@@ -63,7 +64,9 @@ export class SubscriberServiceV2 {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, channelId);
 
 			if (tokenInfoFromDB) {
-				await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false)
+				if (SHOULD_SWAP) {
+					await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false)
+				}
 				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
 		}
@@ -100,7 +103,7 @@ export class SubscriberServiceV2 {
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
-		if (shouldBeFinished) {
+		if (shouldBeFinished && SHOULD_SWAP) {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
 		}
 

@@ -115,7 +115,7 @@ class RaydiumSwap {
 			return amount / (10 ** decimals);
 		}
 
-		return 0.1
+		return 0
 
 	}
 

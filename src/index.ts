@@ -9,12 +9,16 @@ import * as Sentry from '@sentry/node';
 
 dotenv.config();
 
+export const SHOULD_SWAP = process.env.SHOULD_SWAP === 'true'
+
 const init = async () => {
 	const telegramUserService = new TelegramUserServiceV2();
 
 	try {
 		await SubscriberServiceV2.initialization();
 		await telegramUserService.start();
+
+		console.log(SHOULD_SWAP)
 
 		console.log('Listening for new messages...');
 	} catch (error) {

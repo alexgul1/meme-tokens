@@ -8,6 +8,7 @@ import {
 	isCurrentDateGreaterThanStartDate
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
+import RaydiumSwap from '../../swap/service/RaydiumSwap';
 
 const processingAddresses = new Set();
 
@@ -62,14 +63,15 @@ export class SubscriberServiceV2 {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, channelId);
 
 			if (tokenInfoFromDB) {
-				await this.putNewTokenToDB(tokenInfoFromDB)
+				const executionPrice= await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false)
+				await this.putNewTokenToDB(tokenInfoFromDB, executionPrice)
 			}
 		}
 
 		processingAddresses.delete(tokenInfo.pairAddress)
 
 		if (tokenInfoFromDB) {
-			SolanaService.subscribeToPriceUpdates(tokenInfo.pairAddress, (price) => this.updateTokenPriceInDB(tokenInfoFromDB!, price))
+			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
 		}
 	}
 
@@ -78,24 +80,37 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
 		activeSubsInDB.forEach((token) => {
-			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.updateTokenPriceInDB(token, data))
+			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
 		})
 	}
 
-	public static async putNewTokenToDB(data: Token) {
+	public static async putNewTokenToDB(data: Token, executionPrice: string) {
 		try {
-			await this.mongoDBInstance.createEntity(data);
+			await this.mongoDBInstance.createEntity({
+				...data,
+				realBuyPrice: executionPrice
+			});
 		} catch (error) {
 			Sentry.captureException({message: 'SubscriberServiceV2: Error when put new token to DB', error});
 		}
 	}
 
-	public static async updateTokenPriceInDB(token: Token, price: number) {
+	public static async handlePriceChange(token: Token, price: number) {
 		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2)
 
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
+		let executionPrice
+
+		if (shouldBeFinished) {
+			executionPrice= await RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
+		}
+
+		await this.updateTokenPriceInDB(token, price, roe, shouldBeFinished,executionPrice)
+	}
+
+	public static async updateTokenPriceInDB(token: Token, price: number,  roe: number, shouldBeFinished: boolean, executionPrice: string|undefined) {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', token.address, {
@@ -105,7 +120,8 @@ export class SubscriberServiceV2 {
 			...(shouldBeFinished ? {
 				endDate: new Date(),
 				status: 'Finished',
-				soldPrice: price
+				soldPrice: price,
+				realSoldPrice: executionPrice
 			} : {})
 		})
 
@@ -118,7 +134,6 @@ export class SubscriberServiceV2 {
 	private static async generateNewTokenData(tokenInfo: IPair, channelId: string): Promise<Token | null> {
 		const price = await SolanaService.getTokenPrice(tokenInfo.pairAddress);
 
-
 		if (!price) {
 			Sentry.captureMessage(`SubscriberServiceV2: No price from SolanaService for  ${tokenInfo.pairAddress}`);
 			console.log(`SubscriberServiceV2: No price from SolanaService for ${tokenInfo.pairAddress}`)
@@ -128,6 +143,7 @@ export class SubscriberServiceV2 {
 
 		return {
 			address: tokenInfo.pairAddress,
+			tokenAddress: tokenInfo.baseToken.address,
 			name: tokenInfo.baseToken.symbol,
 			initialPrice: price || 0,
 			currentPrice: price || 0,

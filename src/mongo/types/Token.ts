@@ -1,5 +1,6 @@
 export interface Token {
-	address: string; // Token address
+	address: string; // Pair address
+	tokenAddress: string; // Token address
 	name: string; // Token name
 	initialPrice: number; // Token price at start
 	currentPrice: number; // Token price at this moment
@@ -11,4 +12,6 @@ export interface Token {
 	provider: string; // Provider on which we get info
 	status: 'InProgress' | 'Finished'; // Token status
 	roe?: number | null; // Percent of ROE
+	realBuyPrice?: string; // Price from trx
+	realSoldPrice?: string; // Price from trx
 }

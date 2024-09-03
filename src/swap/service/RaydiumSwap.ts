@@ -26,6 +26,9 @@ import {
 import {Wallet} from '@coral-xyz/anchor'
 import bs58 from 'bs58'
 
+const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
+
+
 type SwapTransaction = {
 	toToken: string,
 	amount: number,
@@ -48,11 +51,23 @@ class RaydiumSwap {
 
 		const poolKeys = jsonInfo2PoolKeys(jsonPoolKeys);
 
+		let amount = isSoldTransaction ?  await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount;
+
+		if (isSoldTransaction && amount < 1) {
+			await sleep(5000)
+
+			amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
+
+			if (!amount) {
+				return '';
+			}
+		}
+
 		const swapTransactionParams = {
 			toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 			poolKeys,
 			maxLamports: 1500000,
-			amount: isSoldTransaction ? await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount,
+			amount: amount,
 			fixedSide: isSoldTransaction ? 'out' : 'in'
 		} as SwapTransaction
 

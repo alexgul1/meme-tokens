@@ -63,8 +63,8 @@ export class SubscriberServiceV2 {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, channelId);
 
 			if (tokenInfoFromDB) {
-				const executionPrice= await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false)
-				await this.putNewTokenToDB(tokenInfoFromDB, executionPrice)
+				await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false)
+				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
 		}
 
@@ -84,11 +84,10 @@ export class SubscriberServiceV2 {
 		})
 	}
 
-	public static async putNewTokenToDB(data: Token, executionPrice: string) {
+	public static async putNewTokenToDB(data: Token) {
 		try {
 			await this.mongoDBInstance.createEntity({
 				...data,
-				realBuyPrice: executionPrice
 			});
 		} catch (error) {
 			Sentry.captureException({message: 'SubscriberServiceV2: Error when put new token to DB', error});
@@ -101,16 +100,14 @@ export class SubscriberServiceV2 {
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
-		let executionPrice
-
 		if (shouldBeFinished) {
-			executionPrice= await RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
+			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
 		}
 
-		await this.updateTokenPriceInDB(token, price, roe, shouldBeFinished,executionPrice)
+		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
 	}
 
-	public static async updateTokenPriceInDB(token: Token, price: number,  roe: number, shouldBeFinished: boolean, executionPrice: string|undefined) {
+	public static async updateTokenPriceInDB(token: Token, price: number,  roe: number, shouldBeFinished: boolean) {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', token.address, {
@@ -121,7 +118,6 @@ export class SubscriberServiceV2 {
 				endDate: new Date(),
 				status: 'Finished',
 				soldPrice: price,
-				realSoldPrice: executionPrice
 			} : {})
 		})
 

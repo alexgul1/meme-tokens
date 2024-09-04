@@ -78,6 +78,8 @@ class RaydiumSwap {
 
 		const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 20);
 
+		console.log(executionPrice.toSignificant());
+
 		console.log(`https://solscan.io/tx/${txid}`);
 
 		return executionPrice.toSignificant();

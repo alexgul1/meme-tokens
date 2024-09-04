@@ -45,7 +45,9 @@ class RaydiumSwap {
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
 	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
-	private static SLIPPAGE = Number(process.env.SLIPPAGE) || 5;
+	private static SOLD_SLIPPAGE = Number(process.env.SOLD_SLIPPAGE) || 5;
+	private static BUY_SLIPPAGE = Number(process.env.BUY_SLIPPAGE) || 10;
+
 
 	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean): Promise<string> {
 		const jsonPoolKeys = await this.formatAmmKeysById(pairAddress)
@@ -129,7 +131,9 @@ class RaydiumSwap {
 	}: SwapTransaction): Promise<{transaction: VersionedTransaction, executionPrice: Price}> {
 		const directionIn = poolKeys.quoteMint.toString() == toToken;
 
-		const { minAmountOut, amountIn, executionPrice,} = await this.calcAmountOut(poolKeys, amount, directionIn, fixedSide === 'out');
+		const slippage= fixedSide === 'in' ? this.BUY_SLIPPAGE : this.SOLD_SLIPPAGE;
+
+		const { minAmountOut, amountIn, executionPrice,} = await this.calcAmountOut(poolKeys, amount, directionIn, slippage);
 		const userTokenAccounts = await this.getOwnerTokenAccounts();
 
 		const swapTransaction = await Liquidity.makeSwapInstructionSimple({
@@ -196,10 +200,10 @@ class RaydiumSwap {
 	 * @param {LiquidityPoolKeys} poolKeys - The liquidity pool keys.
 	 * @param {number} rawAmountIn - The raw amount of the input token.
 	 * @param {boolean} swapInDirection - The direction of the swap (true for in, false for out).
-	 * @param isSold
+	 * @param slippage
 	 * @returns {Promise<Object>} The swap calculation result.
 	 */
-	private static async calcAmountOut(poolKeys: LiquidityPoolKeys, rawAmountIn: number, swapInDirection: boolean, isSold: boolean) {
+	private static async calcAmountOut(poolKeys: LiquidityPoolKeys, rawAmountIn: number, swapInDirection: boolean, slippage: number) {
 		const poolInfo = await Liquidity.fetchInfo({connection: this.connection, poolKeys})
 
 		let currencyInMint = poolKeys.baseMint
@@ -218,14 +222,14 @@ class RaydiumSwap {
 		const amountIn = new TokenAmount(currencyIn, rawAmountIn, false)
 		const currencyOut = new Token(TOKEN_PROGRAM_ID, currencyOutMint, currencyOutDecimals)
 
-		const slippage = new Percent(this.SLIPPAGE, 100) // N% slippage
+		const slippageP = new Percent(slippage, 100) // N% slippage
 
 		const {amountOut, minAmountOut, currentPrice, executionPrice, priceImpact, fee} = Liquidity.computeAmountOut({
 			poolKeys,
 			poolInfo,
 			amountIn,
 			currencyOut,
-			slippage,
+			slippage: slippageP,
 		})
 
 		return {

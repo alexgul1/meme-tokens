@@ -2,7 +2,6 @@
 import {AccountLayout} from '@solana/spl-token';
 
 import {
-	Connection,
 	Keypair,
 	PublicKey,
 	TransactionMessage,
@@ -43,7 +42,6 @@ type SwapTransaction = {
  * Class representing a Raydium Swap operation.
  */
 class RaydiumSwap {
-	private static connection: Connection = CONNECTION
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
 	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
@@ -83,7 +81,7 @@ class RaydiumSwap {
 				const {transaction, executionPrice} = await this.getSwapTransactionV2(swapTransactionParams)
 
 				const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 20);
-				
+
 				console.log(`https://solscan.io/tx/${txid}`);
 
 				return executionPrice.toSignificant();
@@ -113,7 +111,7 @@ class RaydiumSwap {
 	 * @returns {Promise<TokenAccount[]>} An array of token accounts.
 	 */
 	public static async getOwnerTokenAccounts(): Promise<TokenAccount[]> {
-		const walletTokenAccount = await this.connection.getTokenAccountsByOwner(this.wallet.publicKey, {
+		const walletTokenAccount = await CONNECTION.getTokenAccountsByOwner(this.wallet.publicKey, {
 			programId: TOKEN_PROGRAM_ID,
 		})
 
@@ -125,7 +123,7 @@ class RaydiumSwap {
 	}
 
 	public static async getTokensAmountInWallet(token: string): Promise<number> {
-		const walletTokenAccount = await this.connection.getTokenAccountsByOwner(this.wallet.publicKey, {
+		const walletTokenAccount = await CONNECTION.getTokenAccountsByOwner(this.wallet.publicKey, {
 			mint: new PublicKey(token)
 		})
 
@@ -137,7 +135,7 @@ class RaydiumSwap {
 			const amount = Number(accountInfo.amount)
 			const mintAddress = accountInfo.mint
 
-			const mintInfo = await this.connection.getParsedAccountInfo(mintAddress);
+			const mintInfo = await CONNECTION.getParsedAccountInfo(mintAddress);
 			const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals ?? 0;
 			return amount / (10 ** decimals);
 		}
@@ -161,7 +159,7 @@ class RaydiumSwap {
 		const userTokenAccounts = await this.getOwnerTokenAccounts();
 
 		const swapTransaction = await Liquidity.makeSwapInstructionSimple({
-			connection: this.connection,
+			connection: CONNECTION,
 			makeTxVersion: TxVersion.V0,
 			poolKeys: {
 				...poolKeys,
@@ -182,7 +180,7 @@ class RaydiumSwap {
 		});
 
 
-		const recentBlockhashForSwap = await this.connection.getLatestBlockhash();
+		const recentBlockhashForSwap = await CONNECTION.getLatestBlockhash();
 		const instructions = swapTransaction.innerTransactions[0].instructions.filter(Boolean);
 
 		const versionedTransaction = new VersionedTransaction(
@@ -199,7 +197,7 @@ class RaydiumSwap {
 	}
 
 	public static async sendVersionedTransaction(tx: VersionedTransaction, maxRetries?: number) {
-		const txid = await this.connection.sendTransaction(tx, {
+		const txid = await CONNECTION.sendTransaction(tx, {
 			skipPreflight: true,
 			maxRetries: maxRetries,
 		});
@@ -214,7 +212,7 @@ class RaydiumSwap {
 	 * @returns {Promise<any>} The simulation result.
 	 */
 	public static async simulateVersionedTransaction(tx: VersionedTransaction) {
-		const txid = await this.connection.simulateTransaction(tx)
+		const txid = await CONNECTION.simulateTransaction(tx)
 
 		return txid
 	}
@@ -229,7 +227,7 @@ class RaydiumSwap {
 	 * @returns {Promise<Object>} The swap calculation result.
 	 */
 	private static async calcAmountOut(poolKeys: LiquidityPoolKeys, rawAmountIn: number, swapInDirection: boolean, slippage: number) {
-		const poolInfo = await Liquidity.fetchInfo({connection: this.connection, poolKeys})
+		const poolInfo = await Liquidity.fetchInfo({connection: CONNECTION, poolKeys})
 
 		let currencyInMint = poolKeys.baseMint
 		let currencyInDecimals = poolInfo.baseDecimals
@@ -270,17 +268,17 @@ class RaydiumSwap {
 
 
 	static async formatAmmKeysById(id: string): Promise<ApiPoolInfoV4> {
-		const account = await this.connection.getAccountInfo(new PublicKey(id))
+		const account = await CONNECTION.getAccountInfo(new PublicKey(id))
 		if (account === null) throw Error(' get id info error ')
 		const info = LIQUIDITY_STATE_LAYOUT_V4.decode(account.data as Buffer)
 
 		const marketId = info.marketId
-		const marketAccount = await this.connection.getAccountInfo(marketId)
+		const marketAccount = await CONNECTION.getAccountInfo(marketId)
 		if (marketAccount === null) throw Error(' get market info error')
 		const marketInfo = MARKET_STATE_LAYOUT_V3.decode(marketAccount.data as Buffer)
 
 		const lpMint = info.lpMint
-		const lpMintAccount = await this.connection.getAccountInfo(lpMint)
+		const lpMintAccount = await CONNECTION.getAccountInfo(lpMint)
 		if (lpMintAccount === null) throw Error(' get lp mint info error')
 		const lpMintInfo = SPL_MINT_LAYOUT.decode(lpMintAccount.data as Buffer)
 

@@ -1,4 +1,4 @@
-import {AccountInfo, Connection, PublicKey, TokenAmount} from '@solana/web3.js';
+import {AccountInfo, PublicKey, TokenAmount} from '@solana/web3.js';
 import {
 	LIQUIDITY_STATE_LAYOUT_V4,
 	LiquidityStateV4,
@@ -10,7 +10,6 @@ import {CONNECTION} from '../../index';
 type PriceUpdateCallback = (price: number) => void;
 
 export class SolanaService {
-	private static connection: Connection = CONNECTION;
 	private static subscriptions: Map<string, number> = new Map();
 	private static callbacks: Map<string, PriceUpdateCallback> = new Map();
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
@@ -32,7 +31,7 @@ export class SolanaService {
 			await this.getInitialPoolState(publicKey, poolID);
 
 			// Subscribe to account changes
-			const subscriptionId = this.connection.onAccountChange(publicKey, (info) => this.handleAccountChange(info as AccountInfo<Buffer>, poolID));
+			const subscriptionId = CONNECTION.onAccountChange(publicKey, (info) => this.handleAccountChange(info as AccountInfo<Buffer>, poolID));
 			this.subscriptions.set(poolID, subscriptionId);
 
 			console.log(`Subscribed to pool ${poolID} with subscription ID ${subscriptionId}`);
@@ -48,7 +47,7 @@ export class SolanaService {
 
 
 		if (subscriptionId !== undefined) {
-			await this.connection.removeAccountChangeListener(subscriptionId);
+			await CONNECTION.removeAccountChangeListener(subscriptionId);
 			this.subscriptions.delete(poolID);
 			this.callbacks.delete(poolID);
 			console.log(`Unsubscribed from pool ${poolID}`);
@@ -58,9 +57,11 @@ export class SolanaService {
 	}
 
 	public static async getTokenPrice(poolID: string): Promise<number|undefined> {
+		console.log( CONNECTION)
+
 		const publicKey = new PublicKey(poolID);
 
-		const info = await this.connection.getAccountInfo(publicKey);
+		const info = await CONNECTION.getAccountInfo(publicKey);
 
 		if (info && info.data) {
 			const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data as Buffer);
@@ -104,8 +105,8 @@ export class SolanaService {
 
 	private static async fetchAndParseTokenPrice(poolState: LiquidityStateV4): Promise<number | undefined> {
 		try {
-			const baseTokenAmount = await this.connection.getTokenAccountBalance(poolState.baseVault);
-			const quoteTokenAmount = await this.connection.getTokenAccountBalance(poolState.quoteVault);
+			const baseTokenAmount = await CONNECTION.getTokenAccountBalance(poolState.baseVault);
+			const quoteTokenAmount = await CONNECTION.getTokenAccountBalance(poolState.quoteVault);
 
 			const baseTokenPrice = this.parseWalletAmount(baseTokenAmount.value);
 			const quoteTokenPrice = this.parseWalletAmount(quoteTokenAmount.value);
@@ -124,7 +125,7 @@ export class SolanaService {
 
 	private static async getInitialPoolState(publicKey: PublicKey, poolID: string): Promise<void> {
 		try {
-			const info = await this.connection.getAccountInfo(publicKey);
+			const info = await CONNECTION.getAccountInfo(publicKey);
 			if (info && info.data) {
 				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data as Buffer);
 				await this.processPoolUpdate(poolState, poolID);

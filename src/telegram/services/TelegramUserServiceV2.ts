@@ -107,7 +107,7 @@ export class TelegramUserServiceV2 {
 			const timeDifferenceInMilliseconds = editDate.getTime() - originalDate.getTime();
 
 			// Check if the difference is less than 3 minutes (180,000 milliseconds)
-			if (timeDifferenceInMilliseconds < 180000) {
+			if (timeDifferenceInMilliseconds < 60000) {
 				const extractedData = extractSolAddress(message.message);
 
 				if (!extractedData) {
@@ -119,7 +119,7 @@ export class TelegramUserServiceV2 {
 				}
 
 				// Handle based on whether it's a token or pair address
-				await SubscriberServiceV2.subscribeToTokenV2(extractedData, `${channelId}::edited`);
+				await SubscriberServiceV2.subscribeToTokenV2(extractedData, channelId);
 
 
 				this.processedAddresses.delete(extractedData);

@@ -44,7 +44,7 @@ class RaydiumSwap {
 	private static connection: Connection = new Connection(process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com');
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
-	private static buyTokenAmount = 0.1;
+	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
 
 	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean): Promise<string> {
 		const jsonPoolKeys = await this.formatAmmKeysById(pairAddress)

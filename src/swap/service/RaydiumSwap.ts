@@ -26,7 +26,7 @@ import {
 import {Wallet} from '@coral-xyz/anchor'
 import bs58 from 'bs58'
 
-const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
+export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
 
 type SwapTransaction = {

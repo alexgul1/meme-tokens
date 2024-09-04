@@ -8,7 +8,7 @@ import {
 	isCurrentDateGreaterThanStartDate
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
-import RaydiumSwap from '../../swap/service/RaydiumSwap';
+import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP} from '../../index';
 
 const processingAddresses = new Set();
@@ -109,7 +109,10 @@ export class SubscriberServiceV2 {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
 				(trx) => {
 					if (trx) {
-						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
+						sleep(10000).then(() => {
+							console.log('Sale of the remaining balance')
+							RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
+						})
 					}
 				}
 			)

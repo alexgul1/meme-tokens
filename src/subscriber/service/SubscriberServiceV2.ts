@@ -109,7 +109,7 @@ export class SubscriberServiceV2 {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
 				(trx) => {
 					if (trx) {
-						sleep(10000).then(() => {
+						sleep(45000).then(() => {
 							console.log('Sale of the remaining balance')
 							RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
 						})

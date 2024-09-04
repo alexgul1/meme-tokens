@@ -66,7 +66,7 @@ class RaydiumSwap {
 		const swapTransactionParams = {
 			toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 			poolKeys,
-			maxLamports: 100000,
+			maxLamports: 228000,
 			amount: amount,
 			fixedSide: isSoldTransaction ? 'out' : 'in'
 		} as SwapTransaction
@@ -217,7 +217,7 @@ class RaydiumSwap {
 		const amountIn = new TokenAmount(currencyIn, rawAmountIn, false)
 		const currencyOut = new Token(TOKEN_PROGRAM_ID, currencyOutMint, currencyOutDecimals)
 
-		const slippage = new Percent(isSold ? 2 : 4, 100) // 1% slippage
+		const slippage = new Percent(isSold ? 3 : 5, 100) // 1% slippage
 
 		const {amountOut, minAmountOut, currentPrice, executionPrice, priceImpact, fee} = Liquidity.computeAmountOut({
 			poolKeys,

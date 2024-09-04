@@ -45,6 +45,7 @@ class RaydiumSwap {
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
 	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
+	private static SLIPPAGE = Number(process.env.SLIPPAGE) || 5;
 
 	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean): Promise<string> {
 		const jsonPoolKeys = await this.formatAmmKeysById(pairAddress)
@@ -217,7 +218,7 @@ class RaydiumSwap {
 		const amountIn = new TokenAmount(currencyIn, rawAmountIn, false)
 		const currencyOut = new Token(TOKEN_PROGRAM_ID, currencyOutMint, currencyOutDecimals)
 
-		const slippage = new Percent(5, 100) // 1% slippage
+		const slippage = new Percent(this.SLIPPAGE, 100) // N% slippage
 
 		const {amountOut, minAmountOut, currentPrice, executionPrice, priceImpact, fee} = Liquidity.computeAmountOut({
 			poolKeys,

@@ -66,7 +66,7 @@ class RaydiumSwap {
 		const swapTransactionParams = {
 			toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 			poolKeys,
-			maxLamports: 1500000,
+			maxLamports: 100000,
 			amount: amount,
 			fixedSide: isSoldTransaction ? 'out' : 'in'
 		} as SwapTransaction

@@ -7,9 +7,16 @@ import {TelegramUserServiceV2} from './telegram/services/TelegramUserServiceV2';
 import {SubscriberServiceV2} from './subscriber/service/SubscriberServiceV2';
 import * as Sentry from '@sentry/node';
 
+import {Connection} from '@solana/web3.js';
+
 dotenv.config();
 
-export const SHOULD_SWAP = process.env.SHOULD_SWAP === 'true'
+export const SHOULD_SWAP = process.env.SHOULD_SWAP === 'true';
+export const CONNECTION = new Connection(process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com', {
+	commitment: 'confirmed',
+	wsEndpoint: process.env.WS_SOLANA_CONNECTION_URL,
+});
+
 
 const init = async () => {
 	const telegramUserService = new TelegramUserServiceV2();

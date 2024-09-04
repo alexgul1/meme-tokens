@@ -25,6 +25,8 @@ import {
 } from '@raydium-io/raydium-sdk'
 import {Wallet} from '@coral-xyz/anchor'
 import bs58 from 'bs58'
+import * as Sentry from '@sentry/node';
+import {CONNECTION} from '../../index';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
@@ -41,7 +43,7 @@ type SwapTransaction = {
  * Class representing a Raydium Swap operation.
  */
 class RaydiumSwap {
-	private static connection: Connection = new Connection(process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com');
+	private static connection: Connection = CONNECTION
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
 	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
@@ -49,40 +51,60 @@ class RaydiumSwap {
 	private static BUY_SLIPPAGE = Number(process.env.BUY_SLIPPAGE) || 10;
 
 
-	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean): Promise<string> {
-		const jsonPoolKeys = await this.formatAmmKeysById(pairAddress)
+	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<string|undefined> {
+		let localAttempt = 0;
 
-		const poolKeys = jsonInfo2PoolKeys(jsonPoolKeys);
+		while (localAttempt <= attempts) {
+			try {
+				const jsonPoolKeys = await this.formatAmmKeysById(pairAddress)
 
-		let amount = isSoldTransaction ?  await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount;
+				const poolKeys = jsonInfo2PoolKeys(jsonPoolKeys);
 
-		if (isSoldTransaction && amount < 1) {
-			await sleep(15000)
+				let amount = isSoldTransaction ? await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount;
 
-			amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
+				if (isSoldTransaction && amount < 1) {
+					await sleep(15000)
 
-			if (!amount) {
-				return '';
+					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
+
+					if (!amount) {
+						return '';
+					}
+				}
+
+				const swapTransactionParams = {
+					toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
+					poolKeys,
+					maxLamports: 228000,
+					amount: amount,
+					fixedSide: isSoldTransaction ? 'out' : 'in'
+				} as SwapTransaction
+
+				const {transaction, executionPrice} = await this.getSwapTransactionV2(swapTransactionParams)
+
+				const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 20);
+				
+				console.log(`https://solscan.io/tx/${txid}`);
+
+				return executionPrice.toSignificant();
+			} catch (e) {
+				localAttempt++;
+
+				if (localAttempt > attempts) {
+					Sentry.captureException({message: 'Max retry attempts reached. Swap failed.', e});
+
+					console.error('Max retry attempts reached. Swap failed.');
+					return undefined
+				}
+
+				Sentry.captureException({message: 'Error when swap token', e});
+				console.log( 'Error when swap token', e);
+
+				await sleep(2000)
 			}
 		}
 
-		const swapTransactionParams = {
-			toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
-			poolKeys,
-			maxLamports: 228000,
-			amount: amount,
-			fixedSide: isSoldTransaction ? 'out' : 'in'
-		} as SwapTransaction
-
-		const {transaction, executionPrice} = await this.getSwapTransactionV2(swapTransactionParams)
-
-		const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 20);
-
-		console.log(executionPrice.toSignificant());
-
-		console.log(`https://solscan.io/tx/${txid}`);
-
-		return executionPrice.toSignificant();
+		return undefined
 	}
 
 	/**
@@ -158,6 +180,7 @@ class RaydiumSwap {
 				microLamports: maxLamports,
 			},
 		});
+
 
 		const recentBlockhashForSwap = await this.connection.getLatestBlockhash();
 		const instructions = swapTransaction.innerTransactions[0].instructions.filter(Boolean);

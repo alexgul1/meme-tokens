@@ -5,11 +5,12 @@ import {
 
 } from '@raydium-io/raydium-sdk';
 import * as Sentry from '@sentry/node';
+import {CONNECTION} from '../../index';
 
 type PriceUpdateCallback = (price: number) => void;
 
 export class SolanaService {
-	private static connection: Connection = new Connection(process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com');
+	private static connection: Connection = CONNECTION;
 	private static subscriptions: Map<string, number> = new Map();
 	private static callbacks: Map<string, PriceUpdateCallback> = new Map();
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');

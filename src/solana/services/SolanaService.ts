@@ -57,8 +57,6 @@ export class SolanaService {
 	}
 
 	public static async getTokenPrice(poolID: string): Promise<number|undefined> {
-		console.log( CONNECTION)
-
 		const publicKey = new PublicKey(poolID);
 
 		const info = await CONNECTION.getAccountInfo(publicKey);

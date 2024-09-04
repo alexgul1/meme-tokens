@@ -54,7 +54,7 @@ class RaydiumSwap {
 		let amount = isSoldTransaction ?  await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount;
 
 		if (isSoldTransaction && amount < 1) {
-			await sleep(5000)
+			await sleep(15000)
 
 			amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
 

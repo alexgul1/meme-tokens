@@ -78,7 +78,7 @@ class RaydiumSwap {
 					fixedSide: isSoldTransaction ? 'out' : 'in'
 				} as SwapTransaction
 
-				const {transaction, executionPrice} = await this.getSwapTransactionV2(swapTransactionParams)
+				const {transaction} = await this.getSwapTransactionV2(swapTransactionParams)
 
 				const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 20);
 

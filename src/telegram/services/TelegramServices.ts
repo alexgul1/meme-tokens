@@ -5,7 +5,7 @@ export type MessageParams = {
 	action: 'buy' | 'sell';
 	signalLink: string;
 	transactionLink: string;
-	transactionStatus: boolean;
+	purchaseTime: number|Date;
 }
 
 export class TelegramBotService {
@@ -14,19 +14,34 @@ export class TelegramBotService {
 
 	// Define message templates
 	private static readonly PURCHASE_TEMPLATE = `
-<b>{token}</b> has been 📈 Bought
-Signal was given - <a href="{signalLink}">Signal Link</a>
-Transaction - <a href="{transactionLink}">Transaction Link</a> and it is <b>{status}</b>
-`;
+🟢<b>{token}</b> has been 📈 Bought
+🔗Signal was given - <a href="{signalLink}">Signal Link</a>
+💬Transaction - <a href="{transactionLink}">Transaction Link</a> 
+🕒Purchase Time: {purchaseTime}
+🕑 Current Time: {currentTime}`;
 
 	private static readonly SALE_TEMPLATE = `
-<b>{token}</b> has been 📉 Sold
-Signal was given - <a href="{signalLink}">Signal Link</a>
-Transaction - <a href="{transactionLink}">Transaction Link</a> and it is <b>{status}</b>
-`;
+🔴<b>{token}</b> has been 📉 Sold
+🔗 Signal was given - <a href="{signalLink}">Signal Link</a>
+💬 Transaction - <a href="{transactionLink}">Transaction Link</a>
+🕒 Purchase Time: {purchaseTime}
+🕑 Current Time: {currentTime}`;
 
-	private static readonly SUCCESS_STATUS = '✅ Successful';
-	private static readonly FAILURE_STATUS = '❌ Failed';
+	/**
+	 * Format the timestamp into a readable string
+	 * @returns Formatted date and time string
+	 * @param date
+	 */
+	static formatTimestamp(date: Date): string {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+		const day = String(date.getDate()).padStart(2, '0');
+		const hours = String(date.getHours()).padStart(2, '0');
+		const minutes = String(date.getMinutes()).padStart(2, '0');
+		const seconds = String(date.getSeconds()).padStart(2, '0');
+
+		return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+	}
 
 	// Инициализация бота
 	static initialize(): void {
@@ -36,15 +51,16 @@ Transaction - <a href="{transactionLink}">Transaction Link</a> and it is <b>{sta
 	}
 
 	static async sendTransactionMessage(params: MessageParams): Promise<void> {
-		const {token, action, signalLink, transactionLink, transactionStatus} = params;
-		const status = transactionStatus ? this.SUCCESS_STATUS : this.FAILURE_STATUS;
+		const {token, action, signalLink, transactionLink, purchaseTime} = params;
 		const template = action === 'buy' ? this.PURCHASE_TEMPLATE : this.SALE_TEMPLATE;
 
 		const message = template
 			.replace('{token}', token)
 			.replace('{signalLink}', signalLink)
 			.replace('{transactionLink}', transactionLink)
-			.replace('{status}', status);
+			.replace('{purchaseTime}', this.formatTimestamp(new Date(purchaseTime)))
+			.replace('{currentTime}', this.formatTimestamp(new Date()));
+
 
 		try {
 			await this.bot.sendMessage(this.groupID, message, {parse_mode: 'HTML'});

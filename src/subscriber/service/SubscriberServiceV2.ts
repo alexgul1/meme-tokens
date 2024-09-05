@@ -187,7 +187,7 @@ export const sendMessageToGroup = async (token: Token, trxId: string | undefined
 		action: isSold ? 'sell' : 'buy',
 		signalLink: token.messageLink,
 		transactionLink: `https://solscan.io/tx/${trxId}`,
-		transactionStatus: trxId ? await RaydiumSwap.checkTransactionStatus(trxId) : false
+		purchaseTime: token.startDate,
 	} as MessageParams
 
 	TelegramBotService.sendTransactionMessage(params)

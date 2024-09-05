@@ -28,7 +28,6 @@ Transaction - <a href="{transactionLink}">Transaction Link</a> and it is <b>{sta
 	private static readonly SUCCESS_STATUS = '✅ Successful';
 	private static readonly FAILURE_STATUS = '❌ Failed';
 
-
 	// Инициализация бота
 	static initialize(): void {
 		if (!this.bot) {

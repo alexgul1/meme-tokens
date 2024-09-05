@@ -84,7 +84,7 @@ class RaydiumSwap {
 
 				console.log(`https://solscan.io/tx/${txid}`);
 
-				return executionPrice.toSignificant();
+				return txid;
 			} catch (e) {
 				localAttempt++;
 
@@ -106,15 +106,20 @@ class RaydiumSwap {
 	}
 
 	public static async checkTransactionStatus(trxId: string):Promise<boolean> {
-		const transaction = await CONNECTION.getParsedTransaction(trxId, {maxSupportedTransactionVersion: 0});
+		try {
+			const transaction = await CONNECTION.getParsedTransaction(trxId, {maxSupportedTransactionVersion: 0});
 
-		if (!transaction) {
-			return false
+			if (!transaction) {
+				return false
+			}
+
+			const hasError = transaction.meta?.err
+
+			return !hasError;
+		} catch (e) {
+			Sentry.captureException(e)
+			return false;
 		}
-
-		const hasError = transaction.meta?.err
-
-		return !hasError;
 	}
 
 	/**

@@ -10,8 +10,11 @@ import {
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP} from '../../index';
+import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
+import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
 
 const processingAddresses = new Set();
+
 
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
@@ -28,7 +31,7 @@ export class SubscriberServiceV2 {
 		this.subscribeToActiveFromDB();
 	}
 
-	public static async subscribeToTokenV2(tokenAddress: string, channelId: string) {
+	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink}: TelegramMessageInfo) {
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
 		if (!tokenInfo) {
@@ -61,12 +64,15 @@ export class SubscriberServiceV2 {
 		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
 
 		if (!tokenInfoFromDB) {
-			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, channelId);
+			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink});
 
 			if (tokenInfoFromDB) {
 				if (SHOULD_SWAP) {
-					await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false)
+					const trx = await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false);
+
+					sendMessageToGroup(tokenInfoFromDB, trx, false)
 				}
+
 				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
 		}
@@ -107,11 +113,15 @@ export class SubscriberServiceV2 {
 
 		if (shouldBeFinished && SHOULD_SWAP) {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
-				(trx) => {
+				async (trx) => {
+					sendMessageToGroup(token, trx, true)
+
 					if (trx) {
 						sleep(45000).then(() => {
 							console.log('Sale of the remaining balance')
-							RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true)
+							RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((trx) => {
+								sendMessageToGroup(token, trx, true)
+							})
 						})
 					}
 				}
@@ -120,7 +130,7 @@ export class SubscriberServiceV2 {
 
 	}
 
-	public static async updateTokenPriceInDB(token: Token, price: number,  roe: number, shouldBeFinished: boolean) {
+	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', token.address, {
@@ -140,7 +150,7 @@ export class SubscriberServiceV2 {
 		}
 	}
 
-	private static async generateNewTokenData(tokenInfo: IPair, channelId: string): Promise<Token | null> {
+	private static async generateNewTokenData(tokenInfo: IPair, messageInfo: TelegramMessageInfo): Promise<Token | null> {
 		const price = await SolanaService.getTokenPrice(tokenInfo.pairAddress);
 
 		if (!price) {
@@ -158,13 +168,27 @@ export class SubscriberServiceV2 {
 			currentPrice: price || 0,
 			startDate: new Date(),
 			lastUpdateDate: new Date(),
-			parsedLink: channelId,
+			parsedLink: messageInfo.channelId,
+			messageLink: messageInfo.messageLink,
 			provider: 'Solana',
 			status: 'InProgress',
 		}
 	}
 
+
 	public static async putIntoDBInfoMessage(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
 		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)
 	}
+}
+
+export const sendMessageToGroup = async (token: Token, trxId: string | undefined, isSold: boolean): Promise<void> => {
+	const params = {
+		token: token.name,
+		action: isSold ? 'sell' : 'buy',
+		signalLink: token.messageLink,
+		transactionLink: `https://solscan.io/tx/${trxId}`,
+		transactionStatus: trxId ? await RaydiumSwap.checkTransactionStatus(trxId) : false
+	} as MessageParams
+
+	TelegramBotService.sendTransactionMessage(params)
 }

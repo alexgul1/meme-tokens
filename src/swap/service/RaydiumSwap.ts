@@ -105,6 +105,18 @@ class RaydiumSwap {
 		return undefined
 	}
 
+	public static async checkTransactionStatus(trxId: string):Promise<boolean> {
+		const transaction = await CONNECTION.getParsedTransaction(trxId, {maxSupportedTransactionVersion: 0});
+
+		if (!transaction) {
+			return false
+		}
+
+		const hasError = transaction.meta?.err
+
+		return !hasError;
+	}
+
 	/**
 	 * Retrieves token accounts owned by the wallet.
 	 * @async

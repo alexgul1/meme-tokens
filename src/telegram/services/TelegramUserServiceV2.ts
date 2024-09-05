@@ -10,6 +10,11 @@ import {extractSolAddress} from '../utils/addressExtractor';
 import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 
+export type TelegramMessageInfo = {
+	channelId: string,
+	messageLink: string,
+}
+
 export class TelegramUserServiceV2 {
 	private client: TelegramClient;
 	private readonly session: StoreSession;
@@ -62,7 +67,13 @@ export class TelegramUserServiceV2 {
 
 	public async eventHandle(event: NewMessageEvent) {
 		const message = event.message;
-		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
+		const peerChannel = (message?.peerId as PeerChannel);
+
+		if (!peerChannel) {
+			return;
+		}
+
+		const channelId = peerChannel.channelId?.toString() || '';
 
 		await SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
@@ -74,12 +85,20 @@ export class TelegramUserServiceV2 {
 			}
 
 			if (this.processedAddresses.has(extractedData)) {
-				console.log('Now we processed this address', extractedData)
+				console.log('Now we processed this address', extractedData);
+				return
 			}
 
 			this.processedAddresses.add(extractedData);
 
-			await SubscriberServiceV2.subscribeToTokenV2(extractedData, channelId);
+			const messageId = message.id;
+			const channel = await this.client.getEntity(peerChannel) as Api.Channel;
+
+
+			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
+				channelId,
+				messageLink: `https://t.me/${channel.username}/${messageId}`
+			});
 
 			this.processedAddresses.delete(extractedData);
 		}
@@ -87,7 +106,13 @@ export class TelegramUserServiceV2 {
 
 	public async editedMessageHandle(event: EditedMessageEvent) {
 		const message = event.message;
-		const channelId = (message?.peerId as PeerChannel)?.channelId?.toString() || '';
+		const peerChannel = (message?.peerId as PeerChannel);
+
+		if (!peerChannel) {
+			return;
+		}
+
+		const channelId = peerChannel.channelId?.toString() || '';
 
 		await SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
@@ -116,11 +141,17 @@ export class TelegramUserServiceV2 {
 
 				if (this.processedAddresses.has(extractedData)) {
 					console.log('Now we processed this address', extractedData)
+					return;
 				}
 
-				// Handle based on whether it's a token or pair address
-				await SubscriberServiceV2.subscribeToTokenV2(extractedData, channelId);
+				const messageId = message.id;
+				const channel = await this.client.getEntity(peerChannel) as Api.Channel;
 
+				// Handle based on whether it's a token or pair address
+				await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
+					channelId,
+					messageLink: `https://t.me/${channel.username}/${messageId}`
+				});
 
 				this.processedAddresses.delete(extractedData);
 			}

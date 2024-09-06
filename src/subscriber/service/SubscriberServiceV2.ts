@@ -188,6 +188,7 @@ export const sendMessageToGroup = async (token: Token, trxId: string | undefined
 		signalLink: token.messageLink,
 		transactionLink: `https://solscan.io/tx/${trxId}`,
 		purchaseTime: token.startDate,
+		chartLink: `https://dexscreener.com/solana/${token.address}?maker=Heku6jueXJxHiaDK1UFuN2cZdc9BwnBGkiuiPL26TtaX`
 	} as MessageParams
 
 	TelegramBotService.sendTransactionMessage(params)

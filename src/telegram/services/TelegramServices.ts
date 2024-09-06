@@ -5,7 +5,8 @@ export type MessageParams = {
 	action: 'buy' | 'sell';
 	signalLink: string;
 	transactionLink: string;
-	purchaseTime: number|Date;
+	purchaseTime: number | Date;
+	chartLink: string;
 }
 
 export class TelegramBotService {
@@ -16,7 +17,8 @@ export class TelegramBotService {
 	private static readonly PURCHASE_TEMPLATE = `
 🟢<b>{token}</b> has been 📈 Bought
 🔗Signal was given - <a href="{signalLink}">Signal Link</a>
-💬Transaction - <a href="{transactionLink}">Transaction Link</a> 
+💬Transaction - <a href="{transactionLink}">Transaction Link</a>
+📊 View the chart: <a href="{chartLink}">Chart</a> 
 🕒Purchase Time: {purchaseTime}
 🕑 Current Time: {currentTime}`;
 
@@ -24,6 +26,7 @@ export class TelegramBotService {
 🔴<b>{token}</b> has been 📉 Sold
 🔗 Signal was given - <a href="{signalLink}">Signal Link</a>
 💬 Transaction - <a href="{transactionLink}">Transaction Link</a>
+📊 View the chart: <a href="{chartLink}">Chart</a>
 🕒 Purchase Time: {purchaseTime}
 🕑 Current Time: {currentTime}`;
 
@@ -51,7 +54,7 @@ export class TelegramBotService {
 	}
 
 	static async sendTransactionMessage(params: MessageParams): Promise<void> {
-		const {token, action, signalLink, transactionLink, purchaseTime} = params;
+		const {token, action, signalLink, transactionLink, purchaseTime, chartLink} = params;
 		const template = action === 'buy' ? this.PURCHASE_TEMPLATE : this.SALE_TEMPLATE;
 
 		const message = template
@@ -59,8 +62,8 @@ export class TelegramBotService {
 			.replace('{signalLink}', signalLink)
 			.replace('{transactionLink}', transactionLink)
 			.replace('{purchaseTime}', this.formatTimestamp(new Date(purchaseTime)))
-			.replace('{currentTime}', this.formatTimestamp(new Date()));
-
+			.replace('{currentTime}', this.formatTimestamp(new Date()))
+			.replace('{chartLink}', chartLink);
 
 		try {
 			await this.bot.sendMessage(this.groupID, message, {parse_mode: 'HTML'});

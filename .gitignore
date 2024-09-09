@@ -7,6 +7,6 @@ node_modules/
 # Project files:
 *.sublime-*
 .idea/
-.env
+.env*
 my_session/
 yarn.lock

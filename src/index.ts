@@ -26,8 +26,6 @@ const init = async () => {
 		await SubscriberServiceV2.initialization();
 		await telegramUserService.start();
 
-		TelegramBotService.initialize();
-
 		console.log(SHOULD_SWAP)
 
 		console.log('Listening for new messages...');

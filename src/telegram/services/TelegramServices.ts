@@ -17,7 +17,7 @@ export class TelegramBotService {
 	private static readonly PURCHASE_TEMPLATE = `
 🟢<b>{token}</b> has been 📈 Bought
 🔗Signal was given - <a href="{signalLink}">Signal Link</a>
-💬Transaction - <a href="{transactionLink}">Transaction Link</a>
+{transactionLink}
 📊 View the chart: <a href="{chartLink}">Chart</a> 
 🕒Purchase Time: {purchaseTime}
 🕑 Current Time: {currentTime}`;
@@ -25,7 +25,7 @@ export class TelegramBotService {
 	private static readonly SALE_TEMPLATE = `
 🔴<b>{token}</b> has been 📉 Sold
 🔗 Signal was given - <a href="{signalLink}">Signal Link</a>
-💬 Transaction - <a href="{transactionLink}">Transaction Link</a>
+{transactionLink}
 📊 View the chart: <a href="{chartLink}">Chart</a>
 🕒 Purchase Time: {purchaseTime}
 🕑 Current Time: {currentTime}`;
@@ -60,7 +60,9 @@ export class TelegramBotService {
 		const message = template
 			.replace('{token}', token)
 			.replace('{signalLink}', signalLink)
-			.replace('{transactionLink}', transactionLink)
+			.replace('{transactionLink}',  transactionLink
+				? `💬Transaction - <a href="${transactionLink}">Transaction Link</a>`
+				: '💬Transaction - no transaction ID')
 			.replace('{purchaseTime}', this.formatTimestamp(new Date(purchaseTime)))
 			.replace('{currentTime}', this.formatTimestamp(new Date()))
 			.replace('{chartLink}', chartLink);

@@ -65,7 +65,7 @@ class RaydiumSwap {
 
 					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
 
-					if (!amount) {
+					if (!amount || amount < 10) {
 						return '';
 					}
 				}

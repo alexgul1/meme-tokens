@@ -187,7 +187,7 @@ class RaydiumSwap {
 			},
 			amountIn: amountIn,
 			amountOut: minAmountOut,
-			fixedSide: fixedSide,
+			fixedSide: 'in',
 			config: {
 				bypassAssociatedCheck: false,
 			},

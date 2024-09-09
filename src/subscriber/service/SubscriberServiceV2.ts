@@ -165,6 +165,8 @@ export class SubscriberServiceV2 {
 
 			await SolanaService.unsubscribeFromPriceUpdates(token.address, callback)
 			await this.mongoDBInstance.finishTokenSubscription({address: token.address, parsedLink: token.parsedLink})
+
+			this.callbacksMap.delete(`${token.address}::${token.parsedLink}`)
 		}
 	}
 

@@ -7,7 +7,7 @@ import {DexscreenerService} from '../../dexscreener/services/DexscreenerService'
 import {
 	isCurrentDateGreaterThanStartDate
 } from '../utils/isCurrentDateGreaterThanEndDate';
-import {SolanaService} from '../../solana/services/SolanaService';
+import {PriceUpdateCallback, SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
@@ -19,7 +19,9 @@ const processingAddresses = new Set();
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
 	private static maxPositiveROE: number;
-	private static maxNegativeROE: number
+	private static maxNegativeROE: number;
+
+	private static callbacksMap: Map<string, PriceUpdateCallback> = new Map();
 
 	public static async initialization() {
 		this.maxPositiveROE = parseFloat(process.env.MAX_POSITIVE_ROE as string) || 15
@@ -32,39 +34,39 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink}: TelegramMessageInfo) {
-		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
+		const tokenInfoFromDX = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
-		if (!tokenInfo) {
+		if (!tokenInfoFromDX) {
 			return
 		}
 
-		if (processingAddresses.has(tokenInfo.pairAddress)) {
-			Sentry.captureMessage(`SubscriberServiceV2: We processing this token ${tokenInfo.pairAddress}`);
-			console.log('SubscriberServiceV2: We processing this token', tokenInfo.pairAddress, channelId)
+		if (processingAddresses.has(tokenInfoFromDX.pairAddress)) {
+			Sentry.captureMessage(`SubscriberServiceV2: We processing this token ${tokenInfoFromDX.pairAddress}`);
+			console.log('SubscriberServiceV2: We processing this token', tokenInfoFromDX.pairAddress, channelId)
 
 			return;
 		}
 
-		processingAddresses.add(tokenInfo.pairAddress)
+		processingAddresses.add(tokenInfoFromDX.pairAddress)
 
 		const tokenInfoFromFinishedCollection = await this.mongoDBInstance.getEntityFromFinishedCollection({
-			'address': tokenInfo.pairAddress,
+			'address': tokenInfoFromDX.pairAddress,
 			parsedLink: channelId,
 		})
 
 		if (tokenInfoFromFinishedCollection) {
-			processingAddresses.delete(tokenInfo.pairAddress)
+			processingAddresses.delete(tokenInfoFromDX.pairAddress)
 
-			Sentry.captureMessage(`SubscriberServiceV2: We have this combination in finished collection ${tokenInfo.pairAddress} ${channelId}`);
-			console.log('SubscriberServiceV2: We have this combination in finished collection', tokenInfo.pairAddress, channelId)
+			Sentry.captureMessage(`SubscriberServiceV2: We have this combination in finished collection ${tokenInfoFromDX.pairAddress} ${channelId}`);
+			console.log('SubscriberServiceV2: We have this combination in finished collection', tokenInfoFromDX.pairAddress, channelId)
 
 			return;
 		}
 
-		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
+		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfoFromDX.pairAddress);
 
 		if (!tokenInfoFromDB) {
-			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink});
+			tokenInfoFromDB = await this.generateNewTokenData(tokenInfoFromDX, {channelId, messageLink});
 
 			if (tokenInfoFromDB) {
 				if (SHOULD_SWAP) {
@@ -77,10 +79,14 @@ export class SubscriberServiceV2 {
 			}
 		}
 
-		processingAddresses.delete(tokenInfo.pairAddress)
+		processingAddresses.delete(tokenInfoFromDX.pairAddress)
 
 		if (tokenInfoFromDB) {
-			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
+			const callback = (price) => this.handlePriceChange(tokenInfoFromDB!, price);
+
+			this.callbacksMap.set(`${tokenInfoFromDB.address}::${tokenInfoFromDB.parsedLink}`, callback);
+
+			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, callback)
 		}
 	}
 
@@ -89,7 +95,11 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
 		activeSubsInDB.forEach((token) => {
-			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
+			const callback = (price) => this.handlePriceChange(token!, price);
+
+			this.callbacksMap.set(`${token.address}::${token.parsedLink}`, callback);
+
+			SolanaService.subscribeToPriceUpdates(token.address, callback)
 		})
 	}
 
@@ -145,8 +155,10 @@ export class SubscriberServiceV2 {
 		})
 
 		if (shouldBeFinished) {
-			await SolanaService.unsubscribeFromPriceUpdates(token.address)
-			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
+			const callback = this.callbacksMap.get(`${token.address}::${token.parsedLink}`)
+
+			await SolanaService.unsubscribeFromPriceUpdates(token.address, callback)
+			await this.mongoDBInstance.finishTokenSubscription({address: token.address, parsedLink: token.parsedLink})
 		}
 	}
 

@@ -7,52 +7,73 @@ import {
 import * as Sentry from '@sentry/node';
 import {CONNECTION} from '../../index';
 
-type PriceUpdateCallback = (price: number) => void;
+export type PriceUpdateCallback = (price: number) => void;
 
 export class SolanaService {
 	private static subscriptions: Map<string, number> = new Map();
-	private static callbacks: Map<string, PriceUpdateCallback> = new Map();
+	private static callbacks: Map<string, Array<PriceUpdateCallback>> = new Map();
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
 
 	public static async subscribeToPriceUpdates(poolID: string, callback: PriceUpdateCallback): Promise<void> {
 		const publicKey = new PublicKey(poolID);
 
 		// Check if the pool is already subscribed
-		if (this.subscriptions.has(poolID)) {
-			console.log(`Already subscribed to pool ${poolID}`);
+		if (!this.subscriptions.has(poolID)) {
+			try {
+				// Get the initial pool state
+				await this.getInitialPoolState(publicKey, poolID);
+
+				// Subscribe to account changes
+				const subscriptionId = CONNECTION.onAccountChange(publicKey, (info) => this.handleAccountChange(info as AccountInfo<Buffer>, poolID));
+				this.subscriptions.set(poolID, subscriptionId);
+
+				console.log(`Subscribed to pool ${poolID} with subscription ID ${subscriptionId}`);
+			} catch (error) {
+				Sentry.captureException({ message: 'Error during subscription', error });
+				console.error('Error during subscription:', error);
+			}
+		}
+
+		// Add the callback for this pool
+		if (!this.callbacks.has(poolID)) {
+			this.callbacks.set(poolID, []);
+		}
+
+		this.callbacks.get(poolID)?.push(callback);
+	}
+
+	public static async unsubscribeFromPriceUpdates(poolID: string, callback?: PriceUpdateCallback): Promise<void> {
+		if (!this.subscriptions.has(poolID)) {
+			console.log(`No active subscription found for pool ${poolID}`);
 			return;
 		}
 
-		try {
-			// Store the callback
-			this.callbacks.set(poolID, callback);
+		if (callback) {
+			// Remove specific callback
+			const callbackArray = this.callbacks.get(poolID);
+			if (callbackArray) {
+				const index = callbackArray.indexOf(callback);
+				if (index > -1) {
+					callbackArray.splice(index, 1);
+					console.log(`Removed callback for pool ${poolID}`);
+				}
+			}
 
-			// Get the initial pool state
-			await this.getInitialPoolState(publicKey, poolID);
-
-			// Subscribe to account changes
-			const subscriptionId = CONNECTION.onAccountChange(publicKey, (info) => this.handleAccountChange(info as AccountInfo<Buffer>, poolID));
-			this.subscriptions.set(poolID, subscriptionId);
-
-			console.log(`Subscribed to pool ${poolID} with subscription ID ${subscriptionId}`);
-		} catch (error) {
-			Sentry.captureException({message: 'Error during subscription', error});
-
-			console.error('Error during subscription:', error);
-		}
-	}
-
-	public static async unsubscribeFromPriceUpdates(poolID: string): Promise<void> {
-		const subscriptionId = this.subscriptions.get(poolID);
-
-
-		if (subscriptionId !== undefined) {
-			await CONNECTION.removeAccountChangeListener(subscriptionId);
+			// If no more callbacks are left, unsubscribe
+			if (callbackArray?.length === 0) {
+				const subscriptionId = this.subscriptions.get(poolID);
+				await CONNECTION.removeAccountChangeListener(subscriptionId!);
+				this.subscriptions.delete(poolID);
+				this.callbacks.delete(poolID);
+				console.log(`Unsubscribed from pool ${poolID}`);
+			}
+		} else {
+			// Remove all callbacks and unsubscribe
+			const subscriptionId = this.subscriptions.get(poolID);
+			await CONNECTION.removeAccountChangeListener(subscriptionId!);
 			this.subscriptions.delete(poolID);
 			this.callbacks.delete(poolID);
-			console.log(`Unsubscribed from pool ${poolID}`);
-		} else {
-			console.log(`No active subscription found for pool ${poolID}`);
+			console.log(`Unsubscribed from pool ${poolID} and removed all callbacks`);
 		}
 	}
 
@@ -94,10 +115,10 @@ export class SolanaService {
 		}
 
 		// Trigger the callback with the new price
-		const callback = this.callbacks.get(poolID);
+		const callbacksArray = this.callbacks.get(poolID);
 
-		if (callback) {
-			callback(price as number);
+		if (callbacksArray?.length) {
+			callbacksArray.forEach(( callback) => callback(price as number));
 		}
 	}
 
@@ -132,7 +153,6 @@ export class SolanaService {
 			}
 		} catch (error) {
 			Sentry.captureException({message: 'Error fetching initial pool state', error});
-
 
 			console.error('Error fetching initial pool state:', error);
 		}

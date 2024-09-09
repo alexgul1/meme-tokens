@@ -116,19 +116,19 @@ export class MongoService implements IMongoService<Token> {
 		return await collection.findOne(object);
 	}
 
-	public async finishTokenSubscription(key: string, value: unknown): Promise<void> {
+	public async finishTokenSubscription(object: Record<string, unknown>): Promise<void> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
 
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		const activeToken = await collection.findOne({ [key]: value });
+		const activeToken = await collection.findOne(object);
 
 		if (activeToken?.status === 'Finished') {
 			const finishedCollection = this.db.collection(this._finishedCollectionName);
 
 			await finishedCollection.insertOne(activeToken);
-			await collection.deleteOne({ [key]: value });
+			await collection.deleteOne(object);
 		}
 	}
 

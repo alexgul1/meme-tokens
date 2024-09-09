@@ -8,7 +8,6 @@ import {SubscriberServiceV2} from './subscriber/service/SubscriberServiceV2';
 import * as Sentry from '@sentry/node';
 
 import {Connection} from '@solana/web3.js';
-import {TelegramBotService} from './telegram/services/TelegramServices';
 
 dotenv.config();
 

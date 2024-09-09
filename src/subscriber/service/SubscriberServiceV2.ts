@@ -82,7 +82,7 @@ export class SubscriberServiceV2 {
 		processingAddresses.delete(tokenInfoFromDX.pairAddress)
 
 		if (tokenInfoFromDB) {
-			const callback = (price) => this.handlePriceChange(tokenInfoFromDB!, price);
+			const callback: PriceUpdateCallback = (price) => this.handlePriceChange(tokenInfoFromDB!, price);
 
 			this.callbacksMap.set(`${tokenInfoFromDB.address}::${tokenInfoFromDB.parsedLink}`, callback);
 
@@ -95,7 +95,7 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
 		activeSubsInDB.forEach((token) => {
-			const callback = (price) => this.handlePriceChange(token!, price);
+			const callback: PriceUpdateCallback = (price) => this.handlePriceChange(token!, price);
 
 			this.callbacksMap.set(`${token.address}::${token.parsedLink}`, callback);
 

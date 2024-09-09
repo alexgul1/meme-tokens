@@ -63,7 +63,10 @@ export class SubscriberServiceV2 {
 			return;
 		}
 
-		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfoFromDX.pairAddress);
+		let tokenInfoFromDB = await this.mongoDBInstance.getEntity({
+			address: tokenInfoFromDX.pairAddress,
+			parsedLink: channelId
+		});
 
 		if (!tokenInfoFromDB) {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfoFromDX, {channelId, messageLink});
@@ -143,7 +146,10 @@ export class SubscriberServiceV2 {
 	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
-		await this.mongoDBInstance.updateEntity('address', token.address, {
+		await this.mongoDBInstance.updateEntity({
+			address: token.address,
+			parsedLink: token.parsedLink
+		}, {
 			currentPrice: price,
 			roe,
 			lastUpdateDate: new Date(),

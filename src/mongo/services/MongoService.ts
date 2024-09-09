@@ -81,23 +81,26 @@ export class MongoService implements IMongoService<Token> {
 			throw new Error('Database connection is not established');
 		}
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		await collection.insertOne(entity);
+		await collection.insertOne({
+			_id: `${entity.address}-${entity.parsedLink}-${entity.startDate.toString()}`,
+			...entity
+		});
 	}
 
-	public async updateEntity(key: string, value: unknown, update: Partial<Token>): Promise<void> {
+	public async updateEntity(object: Record<string, unknown>, update: Partial<Token>): Promise<void> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		await collection.updateOne({ [key]: value }, { $set: update });
+		await collection.updateOne(object, { $set: update });
 	}
 
-	public async getEntity(key: string, value: unknown): Promise<Token | null> {
+	public async getEntity(object: Record<string, unknown>): Promise<Token | null> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');
 		}
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		return await collection.findOne({ [key]: value });
+		return await collection.findOne(object);
 	}
 
 	public async getEntitiesByValue(key: string, value: unknown): Promise<Token[]> {
@@ -125,7 +128,7 @@ export class MongoService implements IMongoService<Token> {
 		const activeToken = await collection.findOne(object);
 
 		if (activeToken?.status === 'Finished') {
-			const finishedCollection = this.db.collection(this._finishedCollectionName);
+			const finishedCollection: Collection<Token> = this.db.collection(this._finishedCollectionName);
 
 			await finishedCollection.insertOne(activeToken);
 			await collection.deleteOne(object);

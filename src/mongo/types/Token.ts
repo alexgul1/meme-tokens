@@ -1,10 +1,11 @@
 export interface Token {
+	_id?: string;
 	address: string; // Pair address
 	tokenAddress: string; // Token address
 	name: string; // Token name
 	initialPrice: number; // Token price at start
 	currentPrice: number; // Token price at this moment
-	soldPrice?: string | null; // Token price on sell moment
+	soldPrice?: number | null; // Token price on sell moment
 	startDate: Date; // Date when token bought
 	lastUpdateDate: Date // Date when token was last updated
 	endDate?: Date | null; // Date when token sold

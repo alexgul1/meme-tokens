@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import cache from 'memory-cache'
 
 import {ITokenPairs} from './ITokenPairs';
 import {IPair} from './IPair';
@@ -36,9 +37,25 @@ export class DexscreenerService {
 
 	static async searchTokenByAddress(tokenAddress: string): Promise<ITokenPairs|null> {
 		try {
+			const inCacheResponse = cache.get(tokenAddress)
+
+			if (inCacheResponse) {
+				return inCacheResponse
+			}
+
 			const response = await fetch(`https://api.dexscreener.com/latest/dex/search/?q=${tokenAddress}`);
 
-			return await response.json() as ITokenPairs;
+			if (response.ok) {
+				const data = await response.json() as ITokenPairs;
+
+				if (data?.pairs.length) {
+					cache.put(tokenAddress, data);
+				}
+
+				return data
+			}
+
+			return null;
 		} catch (error) {
 			Sentry.captureException({message: 'Error fetching token info from Dexscreener', error});
 

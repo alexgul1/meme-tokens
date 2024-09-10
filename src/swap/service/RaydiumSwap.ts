@@ -47,6 +47,7 @@ class RaydiumSwap {
 	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
 	private static SOLD_SLIPPAGE = Number(process.env.SOLD_SLIPPAGE) || 5;
 	private static BUY_SLIPPAGE = Number(process.env.BUY_SLIPPAGE) || 10;
+	private static FEE = Number(process.env.FEE) || 228000;
 
 
 	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<string|undefined> {
@@ -73,7 +74,7 @@ class RaydiumSwap {
 				const swapTransactionParams = {
 					toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 					poolKeys,
-					maxLamports: 228000,
+					maxLamports: this.FEE,
 					amount: amount,
 					fixedSide: isSoldTransaction ? 'out' : 'in'
 				} as SwapTransaction

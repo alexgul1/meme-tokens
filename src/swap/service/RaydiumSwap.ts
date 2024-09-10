@@ -26,6 +26,7 @@ import {Wallet} from '@coral-xyz/anchor'
 import bs58 from 'bs58'
 import * as Sentry from '@sentry/node';
 import {CONNECTION} from '../../index';
+import {Cache, CacheClass} from 'memory-cache';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
@@ -48,14 +49,14 @@ class RaydiumSwap {
 	private static SOLD_SLIPPAGE = Number(process.env.SOLD_SLIPPAGE) || 5;
 	private static BUY_SLIPPAGE = Number(process.env.BUY_SLIPPAGE) || 10;
 	private static FEE = Number(process.env.FEE) || 228000;
-
+	private static cache: CacheClass<string, ApiPoolInfoV4> = new Cache();
 
 	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<string|undefined> {
 		let localAttempt = 0;
 
 		while (localAttempt <= attempts) {
 			try {
-				const jsonPoolKeys = await this.formatAmmKeysById(pairAddress)
+				const jsonPoolKeys = this.cache.get(pairAddress) || await this.formatAmmKeysById(pairAddress)
 
 				const poolKeys = jsonInfo2PoolKeys(jsonPoolKeys);
 
@@ -81,7 +82,7 @@ class RaydiumSwap {
 
 				const {transaction} = await this.getSwapTransactionV2(swapTransactionParams)
 
-				const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 20);
+				const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 5);
 
 				console.log(`https://solscan.io/tx/${txid}`);
 
@@ -179,9 +180,7 @@ class RaydiumSwap {
 		const swapTransaction = await Liquidity.makeSwapInstructionSimple({
 			connection: CONNECTION,
 			makeTxVersion: TxVersion.V0,
-			poolKeys: {
-				...poolKeys,
-			},
+			poolKeys,
 			userKeys: {
 				tokenAccounts: userTokenAccounts,
 				owner: this.wallet.publicKey,
@@ -216,7 +215,7 @@ class RaydiumSwap {
 
 	public static async sendVersionedTransaction(tx: VersionedTransaction, maxRetries?: number) {
 		const txid = await CONNECTION.sendTransaction(tx, {
-			skipPreflight: true,
+			skipPreflight: false,
 			maxRetries: maxRetries,
 		});
 
@@ -300,7 +299,7 @@ class RaydiumSwap {
 		if (lpMintAccount === null) throw Error(' get lp mint info error')
 		const lpMintInfo = SPL_MINT_LAYOUT.decode(lpMintAccount.data as Buffer)
 
-		return {
+		const infoResult =  {
 			id,
 			baseMint: info.baseMint.toString(),
 			quoteMint: info.quoteMint.toString(),
@@ -331,6 +330,10 @@ class RaydiumSwap {
 			marketEventQueue: marketInfo.eventQueue.toString(),
 			lookupTableAccount: PublicKey.default.toString()
 		}
+
+		this.cache.put(id, infoResult as ApiPoolInfoV4)
+
+		return infoResult as ApiPoolInfoV4
 	}
 
 	/*

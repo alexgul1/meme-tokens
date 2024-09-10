@@ -68,12 +68,22 @@ export class SubscriberServiceV2 {
 
 			if (tokenInfoFromDB) {
 				if (SHOULD_SWAP) {
+					console.time('Buy token')
+
 					const trx = await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false);
+
+					console.timeEnd('Buy token')
 
 					sendMessageToGroup(tokenInfoFromDB, trx, false)
 				}
 
-				await this.putNewTokenToDB(tokenInfoFromDB)
+				const newTokenPrice = await SolanaService.getTokenPrice(tokenInfoFromDB.address) as number
+
+				await this.putNewTokenToDB({
+					...tokenInfoFromDB,
+					initialPrice: newTokenPrice,
+					currentPrice: newTokenPrice
+				})
 			}
 		}
 
@@ -188,7 +198,7 @@ export const sendMessageToGroup = async (token: Token, trxId: string | undefined
 		signalLink: token.messageLink,
 		transactionLink: trxId ? `https://solscan.io/tx/${trxId}` : '',
 		purchaseTime: token.startDate,
-		chartLink: `https://dexscreener.com/solana/${token.address}?maker=Heku6jueXJxHiaDK1UFuN2cZdc9BwnBGkiuiPL26TtaX`
+		chartLink: `https://dexscreener.com/solana/${token.address}?maker=73ErWrfKWaHXur3fsKyHxyC88DoBTVSM9j7bivJ3JPty`
 	} as MessageParams
 
 	TelegramBotService.sendTransactionMessage(params)

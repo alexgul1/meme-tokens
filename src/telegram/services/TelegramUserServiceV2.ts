@@ -13,6 +13,7 @@ import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2'
 export type TelegramMessageInfo = {
 	channelId: string,
 	messageLink: string,
+	isEdited?: boolean
 }
 
 export class TelegramUserServiceV2 {
@@ -75,7 +76,7 @@ export class TelegramUserServiceV2 {
 
 		const channelId = peerChannel.channelId?.toString() || '';
 
-		await SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
 			const extractedData = extractSolAddress(message.message);
@@ -97,7 +98,8 @@ export class TelegramUserServiceV2 {
 
 			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 				channelId,
-				messageLink: `https://t.me/${channel.username}/${messageId}`
+				messageLink: `https://t.me/${channel.username}/${messageId}`,
+				isEdited: false
 			});
 
 			this.processedAddresses.delete(extractedData);
@@ -114,7 +116,7 @@ export class TelegramUserServiceV2 {
 
 		const channelId = peerChannel.channelId?.toString() || '';
 
-		await SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
 			const editDateTimestamp = message.editDate;
@@ -131,8 +133,8 @@ export class TelegramUserServiceV2 {
 			// Calculate the difference in milliseconds
 			const timeDifferenceInMilliseconds = editDate.getTime() - originalDate.getTime();
 
-			// Check if the difference is less than 3 minutes (180,000 milliseconds)
-			if (timeDifferenceInMilliseconds < 60000) {
+			// Check if the difference is less than 8 seconds (8888 milliseconds)
+			if (timeDifferenceInMilliseconds < 8888) {
 				const extractedData = extractSolAddress(message.message);
 
 				if (!extractedData) {
@@ -150,7 +152,8 @@ export class TelegramUserServiceV2 {
 				// Handle based on whether it's a token or pair address
 				await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 					channelId,
-					messageLink: `https://t.me/${channel.username}/${messageId}`
+					messageLink: `https://t.me/${channel.username}/${messageId}`,
+					isEdited: true
 				});
 
 				this.processedAddresses.delete(extractedData);

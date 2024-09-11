@@ -31,7 +31,7 @@ export class SubscriberServiceV2 {
 		this.subscribeToActiveFromDB();
 	}
 
-	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink}: TelegramMessageInfo) {
+	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink, isEdited}: TelegramMessageInfo) {
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
 		if (!tokenInfo) {
@@ -64,7 +64,7 @@ export class SubscriberServiceV2 {
 		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
 
 		if (!tokenInfoFromDB) {
-			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink});
+			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink, isEdited});
 
 			if (tokenInfoFromDB) {
 				if (SHOULD_SWAP) {
@@ -180,6 +180,7 @@ export class SubscriberServiceV2 {
 			lastUpdateDate: new Date(),
 			parsedLink: messageInfo.channelId,
 			messageLink: messageInfo.messageLink,
+			isEdited: messageInfo.isEdited,
 			provider: 'Solana',
 			status: 'InProgress',
 		}
@@ -198,7 +199,8 @@ export const sendMessageToGroup = async (token: Token, trxId: string | undefined
 		signalLink: token.messageLink,
 		transactionLink: trxId ? `https://solscan.io/tx/${trxId}` : '',
 		purchaseTime: token.startDate,
-		chartLink: `https://dexscreener.com/solana/${token.address}?maker=73ErWrfKWaHXur3fsKyHxyC88DoBTVSM9j7bivJ3JPty`
+		chartLink: `https://dexscreener.com/solana/${token.address}?maker=73ErWrfKWaHXur3fsKyHxyC88DoBTVSM9j7bivJ3JPty`,
+		isEdited: token.isEdited
 	} as MessageParams
 
 	TelegramBotService.sendTransactionMessage(params)

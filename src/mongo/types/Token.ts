@@ -13,4 +13,5 @@ export interface Token {
 	status: 'InProgress' | 'Finished'; // Token status
 	roe?: number | null; // Percent of ROE
 	messageLink?: string;
+	isEdited?: boolean;
 }

@@ -3,7 +3,6 @@ import {IMongoService} from './IMongoService';
 import {Token} from '../types/Token';
 import dotenv from 'dotenv';
 import * as Sentry from '@sentry/node';
-import cache from 'memory-cache';
 
 dotenv.config();
 
@@ -169,7 +168,7 @@ export class MongoService implements IMongoService<Token> {
 		const collection: Collection = this.db.collection(this.testTGCollectionName);
 
 		const entity = (await collection.findOne({'key': 'telegram'}))!;
-		
+
 		const update = {
 			...(isIncluded ? {includeCount: ++entity.includeCount} : {excludeCount: ++entity.excludeCount}),
 			...(hasTokenAddress && {tokenAddressCount: ++entity.tokenAddressCount}),

@@ -1,8 +1,9 @@
 import {MongoClient, Db, Collection, ConnectionOptions} from 'mongodb';
-import { IMongoService } from './IMongoService';
-import { Token } from '../types/Token';
+import {IMongoService} from './IMongoService';
+import {Token} from '../types/Token';
 import dotenv from 'dotenv';
 import * as Sentry from '@sentry/node';
+import cache from 'memory-cache';
 
 dotenv.config();
 
@@ -81,10 +82,15 @@ export class MongoService implements IMongoService<Token> {
 			throw new Error('Database connection is not established');
 		}
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		await collection.insertOne({
-			_id: `${entity.address}-${entity.parsedLink}-${entity.startDate.toString()}`,
-			...entity
-		});
+
+		try {
+			await collection.insertOne({
+				_id: `${entity.address}-${entity.parsedLink}-${entity.startDate.toString()}`,
+				...entity
+			});
+		} catch (e) {
+			console.log('Can not add to current collection', e)
+		}
 	}
 
 	public async updateEntity(object: Record<string, unknown>, update: Partial<Token>): Promise<void> {
@@ -92,7 +98,12 @@ export class MongoService implements IMongoService<Token> {
 			throw new Error('Database connection is not established');
 		}
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		await collection.updateOne(object, { $set: update });
+
+		try {
+			await collection.updateOne(object, {$set: update});
+		} catch (e) {
+			console.log('Can not update entity in current collection', e)
+		}
 	}
 
 	public async getEntity(object: Record<string, unknown>): Promise<Token | null> {
@@ -108,7 +119,7 @@ export class MongoService implements IMongoService<Token> {
 			throw new Error('Database connection is not established');
 		}
 		const collection: Collection<Token> = this.db.collection(this._collectionName);
-		return await collection.find({ [key]: value }).toArray();
+		return await collection.find({[key]: value}).toArray();
 	}
 
 	public async getEntityFromFinishedCollection(object: Record<string, unknown>): Promise<Token | null> {
@@ -130,8 +141,19 @@ export class MongoService implements IMongoService<Token> {
 		if (activeToken?.status === 'Finished') {
 			const finishedCollection: Collection<Token> = this.db.collection(this._finishedCollectionName);
 
-			await finishedCollection.insertOne(activeToken);
-			await collection.deleteOne(object);
+			try {
+				await finishedCollection.insertOne(activeToken);
+
+			} catch (e) {
+				console.log('Can not insert to finished collection', e)
+			}
+
+			try {
+				await collection.deleteOne(object);
+			} catch (e) {
+				console.log('Can not remove from current collection', e)
+			}
+
 		}
 	}
 
@@ -141,21 +163,20 @@ export class MongoService implements IMongoService<Token> {
 		}
 
 		if (!this.testTGCollectionName) {
-			return ;
+			return;
 		}
 
 		const collection: Collection = this.db.collection(this.testTGCollectionName);
 
-		const entity = (await collection.findOne({ 'key': 'telegram' }))!;
-
-
+		const entity = (await collection.findOne({'key': 'telegram'}))!;
+		
 		const update = {
 			...(isIncluded ? {includeCount: ++entity.includeCount} : {excludeCount: ++entity.excludeCount}),
 			...(hasTokenAddress && {tokenAddressCount: ++entity.tokenAddressCount}),
 			date: new Date()
 		}
 
-		await collection.updateOne({ 'key': 'telegram' }, {
+		await collection.updateOne({'key': 'telegram'}, {
 			$set: update
 		});
 	}

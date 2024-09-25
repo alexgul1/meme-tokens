@@ -132,7 +132,7 @@ export class TelegramUserServiceV2 {
 			const timeDifferenceInMilliseconds = editDate.getTime() - originalDate.getTime();
 
 			// Check if the difference is less than 3 minutes (180,000 milliseconds)
-			if (timeDifferenceInMilliseconds < 60000) {
+			if (timeDifferenceInMilliseconds < 8000) {
 				const extractedData = extractSolAddress(message.message);
 
 				if (!extractedData) {

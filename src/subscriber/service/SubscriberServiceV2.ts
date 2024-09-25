@@ -122,7 +122,9 @@ export class SubscriberServiceV2 {
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
-		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
+		const shouldBeRemoved = isCurrentDateGreaterThanStartDate(new Date(token.startDate), 60)
+
+		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished, shouldBeRemoved)
 
 		if (shouldBeFinished && SHOULD_SWAP) {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
@@ -143,7 +145,7 @@ export class SubscriberServiceV2 {
 
 	}
 
-	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
+	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean, shouldBeRemoved: boolean) {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity({
@@ -157,7 +159,10 @@ export class SubscriberServiceV2 {
 				endDate: new Date(),
 				status: 'Finished',
 				soldPrice: price,
-			} : {})
+			} : {}),
+			...(shouldBeRemoved ? {
+				status: 'Removed'
+			} :{})
 		})
 
 		if (shouldBeFinished) {

@@ -152,7 +152,14 @@ export class MongoService implements IMongoService<Token> {
 			} catch (e) {
 				console.log('Can not remove from current collection', e)
 			}
+		}
 
+		if (activeToken?.status === 'Removed') {
+			try {
+				await collection.deleteOne(object);
+			} catch (e) {
+				console.log('Can not remove from current collection', e)
+			}
 		}
 	}
 

@@ -49,7 +49,7 @@ export class DexscreenerService {
 				const data = await response.json() as ITokenPairs;
 
 				if (data?.pairs.length) {
-					cache.put(tokenAddress, data);
+					cache.put(tokenAddress, data, 7_200_000);
 				}
 
 				return data

@@ -11,7 +11,7 @@ export interface Token {
 	endDate?: Date | null; // Date when token sold
 	parsedLink: string; // Link where this token was get
 	provider: string; // Provider on which we get info
-	status: 'InProgress' | 'Finished'; // Token status
+	status: 'InProgress' | 'Finished' | 'Removed'; // Token status
 	roe?: number | null; // Percent of ROE
 	messageLink?: string;
 }

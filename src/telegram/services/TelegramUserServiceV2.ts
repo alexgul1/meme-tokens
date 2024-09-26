@@ -7,7 +7,7 @@ import {NewMessage, NewMessageEvent,} from 'telegram/events';
 import PeerChannel = Api.PeerChannel;
 import {extractSolAddress} from '../utils/addressExtractor';
 
-import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
+import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 
 export type TelegramMessageInfo = {
@@ -58,7 +58,7 @@ export class TelegramUserServiceV2 {
 
 	private async handleUpdates() {
 		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({}))
-		this.client.addEventHandler(this.editedMessageHandle.bind(this), new EditedMessage({}))
+		// this.client.addEventHandler(this.editedMessageHandle.bind(this), new EditedMessage({}))
 	}
 
 	public async start(): Promise<void> {

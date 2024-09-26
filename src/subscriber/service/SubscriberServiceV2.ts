@@ -126,14 +126,20 @@ export class SubscriberServiceV2 {
 				async (trx) => {
 					sendMessageToGroup(token, trx, true)
 
-					if (trx) {
-						sleep(45000).then(() => {
-							console.log('Sale of the remaining balance')
-							RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((trx) => {
-								sendMessageToGroup(token, trx, true)
+					sleep(45000).then(() => {
+						console.log('Sale of the remaining balance')
+						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((trx) => {
+							sendMessageToGroup(token, trx, true)
+
+							sleep(45000).then(() => {
+								console.log('Sale of the remaining balance 2')
+								RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((trx) => {
+									sendMessageToGroup(token, trx, true)
+								})
 							})
 						})
-					}
+					})
+
 				}
 			)
 		}

@@ -67,6 +67,13 @@ export class SolanaService {
 				this.callbacks.delete(poolID);
 				console.log(`Unsubscribed from pool ${poolID}`);
 			}
+		} else {
+			// Remove all callbacks and unsubscribe
+			const subscriptionId = this.subscriptions.get(poolID);
+			await CONNECTION.removeAccountChangeListener(subscriptionId!);
+			this.subscriptions.delete(poolID);
+			this.callbacks.delete(poolID);
+			console.log(`Unsubscribed from pool ${poolID} and removed all callbacks`);
 		}
 	}
 

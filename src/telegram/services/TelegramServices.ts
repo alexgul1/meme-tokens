@@ -73,7 +73,7 @@ export class TelegramBotService {
 		;
 
 		try {
-			await this.bot.sendMessage(this.groupID, message, {parse_mode: 'HTML'});
+			console.log(message)
 		} catch (error) {
 			console.error('Error sending message: ', error);
 		}

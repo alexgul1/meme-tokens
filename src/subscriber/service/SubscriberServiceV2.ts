@@ -4,9 +4,7 @@ import {MongoService} from '../../mongo/services/MongoService';
 import {Token} from '../../mongo/types/Token';
 import {IPair} from '../../dexscreener/services/IPair';
 import {DexscreenerService} from '../../dexscreener/services/DexscreenerService';
-import {
-	isCurrentDateGreaterThanStartDate
-} from '../utils/isCurrentDateGreaterThanEndDate';
+
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP} from '../../index';
@@ -15,15 +13,24 @@ import {MessageParams, TelegramBotService} from '../../telegram/services/Telegra
 
 const processingAddresses = new Set();
 
+const calculateSmartStopLoss = (roe: number, maxInitStopRoe: number) => {
+	if (roe <= 0) {
+		return maxInitStopRoe
+	}
+
+	return ((1 + maxInitStopRoe / 100) * (1 + roe / 100) - 1) * 100;
+}
+
 
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
-	private static maxPositiveROE: number;
-	private static maxNegativeROE: number
+	private static maxNegativeROE: number;
+	private static activeTokens: Map<string, Token>
 
 	public static async initialization() {
-		this.maxPositiveROE = parseFloat(process.env.MAX_POSITIVE_ROE as string) || 15
 		this.maxNegativeROE = (parseFloat(process.env.MAX_NEGATIVE_ROE as string) || 10) * -1;
+
+		this.activeTokens = new Map();
 
 		this.mongoDBInstance = new MongoService(2);
 		await this.mongoDBInstance.connect();
@@ -31,7 +38,11 @@ export class SubscriberServiceV2 {
 		this.subscribeToActiveFromDB();
 	}
 
-	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink, isEdited}: TelegramMessageInfo) {
+	public static async subscribeToTokenV2(tokenAddress: string, {
+		channelId,
+		messageLink,
+		isEdited
+	}: TelegramMessageInfo) {
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
 		if (!tokenInfo) {
@@ -90,6 +101,8 @@ export class SubscriberServiceV2 {
 		processingAddresses.delete(tokenInfo.pairAddress)
 
 		if (tokenInfoFromDB) {
+			this.activeTokens.set(tokenInfoFromDB.address, tokenInfoFromDB)
+
 			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
 		}
 	}
@@ -99,6 +112,8 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
 		activeSubsInDB.forEach((token) => {
+			this.activeTokens.set(token.address, token)
+
 			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
 		})
 	}
@@ -114,12 +129,19 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async handlePriceChange(token: Token, price: number) {
-		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2)
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const tokenFromMap = this.activeTokens.get(token.address)!;
 
-		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
-			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
+		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2);
 
-		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
+		const maxRoe = Math.max((tokenFromMap.maxRoe || -Infinity), roe);
+
+
+		const smartStopLoss = calculateSmartStopLoss(maxRoe, this.maxNegativeROE)
+
+		const shouldBeFinished = roe < smartStopLoss;
+
+		this.updateTokenPriceInDB(token, price, roe, maxRoe, shouldBeFinished)
 
 		if (shouldBeFinished && SHOULD_SWAP) {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
@@ -139,18 +161,39 @@ export class SubscriberServiceV2 {
 							})
 						})
 					})
-
 				}
 			)
 		}
 
 	}
 
-	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
+	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, maxRoe: number, shouldBeFinished: boolean) {
+
+		const tokenFromMap = this.activeTokens.get(token.address);
+
+		const newTokenInfo = {
+			...tokenFromMap,
+			currentPrice: price,
+			maxRoe,
+			roe,
+			lastUpdateDate: new Date(),
+			...(shouldBeFinished ? {
+				endDate: new Date(),
+				status: 'Finished',
+				soldPrice: price,
+			} : {})
+		}
+
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		this.activeTokens.set(token.address, newTokenInfo)
+
+
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', token.address, {
 			currentPrice: price,
+			maxRoe,
 			roe,
 			lastUpdateDate: new Date(),
 			...(shouldBeFinished ? {
@@ -160,9 +203,11 @@ export class SubscriberServiceV2 {
 			} : {})
 		})
 
+
 		if (shouldBeFinished) {
-			await SolanaService.unsubscribeFromPriceUpdates(token.address)
-			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
+			this.activeTokens.delete(token.address);
+			await SolanaService.unsubscribeFromPriceUpdates(token.address);
+			await this.mongoDBInstance.finishTokenSubscription('address', token.address);
 		}
 	}
 

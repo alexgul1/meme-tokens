@@ -3,7 +3,7 @@ import {AccountLayout} from '@solana/spl-token';
 
 import {
 	Keypair,
-	PublicKey,
+	PublicKey, SystemProgram,
 	TransactionMessage,
 	VersionedTransaction
 } from '@solana/web3.js'
@@ -25,7 +25,7 @@ import {
 import {Wallet} from '@coral-xyz/anchor'
 import bs58 from 'bs58'
 import * as Sentry from '@sentry/node';
-import {CONNECTION} from '../../index';
+import {CONNECTION, JITO_CONNECTION} from '../../index';
 import {Cache, CacheClass} from 'memory-cache';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
@@ -44,6 +44,7 @@ type SwapTransaction = {
  */
 class RaydiumSwap {
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
+	private static JitoTipKey = new PublicKey('96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5');
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
 	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
 	private static SOLD_SLIPPAGE = Number(process.env.SOLD_SLIPPAGE) || 5;
@@ -75,7 +76,7 @@ class RaydiumSwap {
 				const swapTransactionParams = {
 					toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 					poolKeys,
-					maxLamports: this.FEE,
+					maxLamports: this.FEE / 2,
 					amount: amount,
 					fixedSide: isSoldTransaction ? 'out' : 'in'
 				} as SwapTransaction
@@ -200,6 +201,16 @@ class RaydiumSwap {
 		const recentBlockhashForSwap = await CONNECTION.getLatestBlockhash();
 		const instructions = swapTransaction.innerTransactions[0].instructions.filter(Boolean);
 
+
+		// Добавляем инструкцию для чаевых в транзакцию (например, 0.01 SOL)
+		const tipInstruction = SystemProgram.transfer({
+			fromPubkey: this.wallet.publicKey, // Публичный ключ вашего кошелька
+			toPubkey: this.JitoTipKey,
+			lamports: this.FEE / 2,
+		});
+
+		instructions.push(tipInstruction);
+
 		const versionedTransaction = new VersionedTransaction(
 			new TransactionMessage({
 				payerKey: this.wallet.publicKey,
@@ -214,7 +225,7 @@ class RaydiumSwap {
 	}
 
 	public static async sendVersionedTransaction(tx: VersionedTransaction, maxRetries?: number) {
-		const txid = await CONNECTION.sendTransaction(tx, {
+		const txid = await JITO_CONNECTION.sendTransaction(tx, {
 			skipPreflight: false,
 			maxRetries: maxRetries,
 		});

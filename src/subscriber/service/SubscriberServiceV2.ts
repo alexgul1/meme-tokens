@@ -114,8 +114,8 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async handlePriceChange(token: Token, price: number) {
-		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2)
-
+		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
+		
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 

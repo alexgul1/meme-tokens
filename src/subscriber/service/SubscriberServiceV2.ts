@@ -135,8 +135,8 @@ export class SubscriberServiceV2 {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const tokenFromMap = activeTokens.get(token.address)!;
 
-		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2);
-
+		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
+		
 		const maxRoe = Math.max((tokenFromMap.maxRoe || -Infinity), roe);
 
 		const smartStopLoss = calculateSmartStopLoss(maxRoe, this.maxNegativeROE)

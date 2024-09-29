@@ -12,6 +12,7 @@ import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
 
 const processingAddresses = new Set();
+const activeTokens: Map<string, Token> = new Map();
 
 const calculateSmartStopLoss = (roe: number, maxInitStopRoe: number) => {
 	if (roe <= 0) {
@@ -25,12 +26,9 @@ const calculateSmartStopLoss = (roe: number, maxInitStopRoe: number) => {
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
 	private static maxNegativeROE: number;
-	private static activeTokens: Map<string, Token>
 
 	public static async initialization() {
 		this.maxNegativeROE = (parseFloat(process.env.MAX_NEGATIVE_ROE as string) || 10) * -1;
-
-		this.activeTokens = new Map();
 
 		this.mongoDBInstance = new MongoService(2);
 		await this.mongoDBInstance.connect();
@@ -95,14 +93,19 @@ export class SubscriberServiceV2 {
 					initialPrice: newTokenPrice,
 					currentPrice: newTokenPrice
 				})
+
+				activeTokens.set(tokenInfoFromDB.address, {
+					...tokenInfoFromDB,
+					initialPrice: newTokenPrice,
+					currentPrice: newTokenPrice
+				})
+
 			}
 		}
 
 		processingAddresses.delete(tokenInfo.pairAddress)
 
 		if (tokenInfoFromDB) {
-			this.activeTokens.set(tokenInfoFromDB.address, tokenInfoFromDB)
-
 			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
 		}
 	}
@@ -112,7 +115,7 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
 		activeSubsInDB.forEach((token) => {
-			this.activeTokens.set(token.address, token)
+			activeTokens.set(token.address, token)
 
 			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
 		})
@@ -130,12 +133,11 @@ export class SubscriberServiceV2 {
 
 	public static async handlePriceChange(token: Token, price: number) {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const tokenFromMap = this.activeTokens.get(token.address)!;
+		const tokenFromMap = activeTokens.get(token.address)!;
 
 		const roe = 100 * (price - token.initialPrice) / ((price + token.initialPrice) / 2);
 
 		const maxRoe = Math.max((tokenFromMap.maxRoe || -Infinity), roe);
-
 
 		const smartStopLoss = calculateSmartStopLoss(maxRoe, this.maxNegativeROE)
 
@@ -168,9 +170,10 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, maxRoe: number, shouldBeFinished: boolean) {
+		const tokenFromMap = activeTokens.get(token.address);
 
-		const tokenFromMap = this.activeTokens.get(token.address);
-
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
 		const newTokenInfo = {
 			...tokenFromMap,
 			currentPrice: price,
@@ -186,7 +189,7 @@ export class SubscriberServiceV2 {
 
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
-		this.activeTokens.set(token.address, newTokenInfo)
+		activeTokens.set(token.address, newTokenInfo)
 
 
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -205,7 +208,7 @@ export class SubscriberServiceV2 {
 
 
 		if (shouldBeFinished) {
-			this.activeTokens.delete(token.address);
+			activeTokens.delete(token.address);
 			await SolanaService.unsubscribeFromPriceUpdates(token.address);
 			await this.mongoDBInstance.finishTokenSubscription('address', token.address);
 		}

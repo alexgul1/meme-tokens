@@ -26,8 +26,10 @@ const calculateSmartStopLoss = (roe: number, maxInitStopRoe: number) => {
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
 	private static maxNegativeROE: number;
+	private static maxPositiveROE: number;
 
 	public static async initialization() {
+		this.maxPositiveROE = parseFloat(process.env.MAX_POSITIVE_ROE as string) || 15
 		this.maxNegativeROE = (parseFloat(process.env.MAX_NEGATIVE_ROE as string) || 10) * -1;
 
 		this.mongoDBInstance = new MongoService(2);
@@ -136,12 +138,12 @@ export class SubscriberServiceV2 {
 		const tokenFromMap = activeTokens.get(token.address)!;
 
 		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
-		
+
 		const maxRoe = Math.max((tokenFromMap.maxRoe || -Infinity), roe);
 
 		const smartStopLoss = calculateSmartStopLoss(maxRoe, this.maxNegativeROE)
 
-		const shouldBeFinished = roe < smartStopLoss;
+		const shouldBeFinished = roe < smartStopLoss || roe > this.maxPositiveROE;
 
 		this.updateTokenPriceInDB(token, price, roe, maxRoe, shouldBeFinished)
 

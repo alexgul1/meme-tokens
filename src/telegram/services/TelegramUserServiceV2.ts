@@ -9,12 +9,16 @@ import {extractSolAddress} from '../utils/addressExtractor';
 
 import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
+import {resolve} from 'path';
 
 export type TelegramMessageInfo = {
 	channelId: string,
 	messageLink: string,
 	isEdited?: boolean
 }
+
+console.log(resolve(__dirname, '../../images/saulSignal.jpeg'))
+
 
 export class TelegramUserServiceV2 {
 	private client: TelegramClient;
@@ -23,6 +27,8 @@ export class TelegramUserServiceV2 {
 	private readonly apiHash: string;
 	private readonly chatIds: Set<string>;
 	private readonly processedAddresses: Set<string>;
+	// private callChannelEntity: Entity;
+	private callChannelEntity: any;
 
 	constructor() {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
@@ -64,6 +70,7 @@ export class TelegramUserServiceV2 {
 	public async start(): Promise<void> {
 		await this.connect();
 		await this.handleUpdates()
+		this.callChannelEntity = await this.client.getEntity('SaulSignals')
 	}
 
 	public async eventHandle(event: NewMessageEvent) {
@@ -94,7 +101,6 @@ export class TelegramUserServiceV2 {
 
 			const messageId = message.id;
 			const channel = await this.client.getEntity(peerChannel) as Api.Channel;
-
 
 			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 				channelId,
@@ -159,5 +165,21 @@ export class TelegramUserServiceV2 {
 				this.processedAddresses.delete(extractedData);
 			}
 		}
+	}
+
+	public async sendMessageToCallChannel(ticker: string, ca: string) {
+		const messageText = `🔥 (SOL) **$${ticker}**
+Saul Signals\n
+aped some **$${ticker}**. Be safe with entries.\n
+**CA:** \`${ca}\`\n
+https://dexscreener.com/solana/${ca}\n
+@SaulSignals
+    `;
+
+		await this.client.sendMessage(this.callChannelEntity,{
+			message: messageText,
+			file:resolve(__dirname, '../../images/saulSignal.jpeg'),
+		});
+
 	}
 }

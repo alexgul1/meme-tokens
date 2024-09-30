@@ -9,7 +9,7 @@ import {
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
-import {SHOULD_SWAP} from '../../index';
+import {SHOULD_SWAP, telegramUserService} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
 
@@ -91,6 +91,7 @@ export class SubscriberServiceV2 {
 
 		if (tokenInfoFromDB) {
 			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
+			this.getCallToChannel(tokenInfoFromDB)
 		}
 	}
 
@@ -115,7 +116,7 @@ export class SubscriberServiceV2 {
 
 	public static async handlePriceChange(token: Token, price: number) {
 		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
-		
+
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
@@ -195,6 +196,19 @@ export class SubscriberServiceV2 {
 
 	public static async putIntoDBInfoMessage(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
 		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)
+	}
+
+	public static async getCallToChannel(token: Token): Promise<void> {
+		const isExists = await this.mongoDBInstance.checkIsCallExists({address: token.address})
+
+		if (isExists) {
+			console.log('Call Exists')
+			return;
+		}
+
+		this.mongoDBInstance.addCallToDB(token)
+		telegramUserService.sendMessageToCallChannel(token.name, token.address)
+
 	}
 }
 

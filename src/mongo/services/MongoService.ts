@@ -18,6 +18,7 @@ export class MongoService implements IMongoService<Token> {
 	private readonly finishedCollectionNameV2: string;
 	private readonly testTGCollectionName: string;
 	private readonly version: number;
+	private readonly callCollectionName: string;
 
 
 	constructor(version = 1) {
@@ -27,6 +28,7 @@ export class MongoService implements IMongoService<Token> {
 		this.finishedCollectionName = process.env.FINISHED_COLLECTION_NAME as string;
 		this.collectionNameV2 = process.env.COLLECTION_NAME_V2 as string;
 		this.finishedCollectionNameV2 = process.env.FINISHED_COLLECTION_NAME_V2 as string;
+		this.callCollectionName = process.env.CALL_COLLECTION_NAME as string;
 
 		this.testTGCollectionName = process.env.TEST_TG_COLLECTION_NAME as string;
 
@@ -155,6 +157,26 @@ export class MongoService implements IMongoService<Token> {
 		await collection.updateOne({ 'key': 'telegram' }, {
 			$set: update
 		});
+	}
+
+	public async checkIsCallExists(object: Record<string, unknown>): Promise<boolean> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+
+		const collection: Collection<Token> = this.db.collection(this.callCollectionName);
+
+		return !!await collection.findOne(object);
+	}
+
+	public async addCallToDB(token: Token): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+
+		const collection: Collection<Token> = this.db.collection(this.callCollectionName);
+
+		await collection.insertOne(token);
 	}
 
 	public async close(): Promise<void> {

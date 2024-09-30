@@ -23,9 +23,9 @@ export const JITO_CONNECTION = new Connection(process.env.JITO_CONNECTION_URL ||
 });
 
 
-const init = async () => {
-	const telegramUserService = new TelegramUserServiceV2();
+export const telegramUserService = new TelegramUserServiceV2();
 
+const init = async () => {
 	try {
 		await SubscriberServiceV2.initialization();
 		await telegramUserService.start();

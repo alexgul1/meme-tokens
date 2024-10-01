@@ -91,7 +91,7 @@ export class SubscriberServiceV2 {
 
 		if (tokenInfoFromDB) {
 			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
-			this.getCallToChannel(tokenInfoFromDB)
+			this.getCallToChannel(tokenInfoFromDB, tokenInfo.baseToken.name)
 		}
 	}
 
@@ -198,7 +198,7 @@ export class SubscriberServiceV2 {
 		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)
 	}
 
-	public static async getCallToChannel(token: Token): Promise<void> {
+	public static async getCallToChannel(token: Token, tokenName: string): Promise<void> {
 		const isExists = await this.mongoDBInstance.checkIsCallExists({address: token.address})
 
 		if (isExists) {
@@ -207,8 +207,7 @@ export class SubscriberServiceV2 {
 		}
 
 		this.mongoDBInstance.addCallToDB(token)
-		telegramUserService.sendMessageToCallChannel(token.name, token.address)
-
+		telegramUserService.sendMessageToCallChannel(token.name, tokenName, token.address)
 	}
 }
 

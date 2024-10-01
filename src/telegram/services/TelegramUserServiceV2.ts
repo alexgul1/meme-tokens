@@ -168,8 +168,8 @@ export class TelegramUserServiceV2 {
 		}
 	}
 
-	public async sendMessageToCallChannel(ticker: string, ca: string) {
-		const promoText = await generateDetailedMemeTokenPromo(ticker) || 'aped some **$${ticker}**. Be safe with entries.'
+	public async sendMessageToCallChannel(ticker: string, tokenName:string, ca: string) {
+		const promoText = await generateDetailedMemeTokenPromo(ticker, tokenName) || 'aped some **$${ticker}**. Be safe with entries.'
 
 		const messageText = `🔥 (SOL) **$${ticker}**
 Saul Signals\n

@@ -10,6 +10,7 @@ import {extractSolAddress} from '../utils/addressExtractor';
 import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 import {resolve} from 'path';
+import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
 
 export type TelegramMessageInfo = {
 	channelId: string,
@@ -168,9 +169,11 @@ export class TelegramUserServiceV2 {
 	}
 
 	public async sendMessageToCallChannel(ticker: string, ca: string) {
+		const promoText = await generateDetailedMemeTokenPromo(ticker) || 'aped some **$${ticker}**. Be safe with entries.'
+
 		const messageText = `🔥 (SOL) **$${ticker}**
 Saul Signals\n
-aped some **$${ticker}**. Be safe with entries.\n
+${promoText}\n
 **CA:** \`${ca}\`\n
 https://dexscreener.com/solana/${ca}\n
 @SaulSignals

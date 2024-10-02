@@ -10,6 +10,7 @@ import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
+import {isCurrentDateGreaterThanStartDate} from '../utils/isCurrentDateGreaterThanEndDate';
 
 const processingAddresses = new Set();
 const activeTokens: Map<string, Token> = new Map();
@@ -143,7 +144,7 @@ export class SubscriberServiceV2 {
 
 		const smartStopLoss = calculateSmartStopLoss(maxRoe, this.maxNegativeROE)
 
-		const shouldBeFinished = roe < smartStopLoss || roe > this.maxPositiveROE;
+		const shouldBeFinished = roe < smartStopLoss || roe > this.maxPositiveROE || isCurrentDateGreaterThanStartDate(new Date(token.startDate), 60 * 4);
 
 		this.updateTokenPriceInDB(token, price, roe, maxRoe, shouldBeFinished)
 

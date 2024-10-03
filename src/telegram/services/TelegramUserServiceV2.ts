@@ -11,6 +11,8 @@ import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 import {resolve} from 'path';
 import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
+import  {Cache, CacheClass} from 'memory-cache';
+import long = Api.long;
 
 export type TelegramMessageInfo = {
 	channelId: string,
@@ -30,6 +32,7 @@ export class TelegramUserServiceV2 {
 	private readonly processedAddresses: Set<string>;
 	// private callChannelEntity: Entity;
 	private callChannelEntity: any;
+	private readonly channelsIdToNameMap: CacheClass<long, string>
 
 	constructor() {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
@@ -52,6 +55,7 @@ export class TelegramUserServiceV2 {
 		this.session = new StoreSession('my_session')
 		this.client = new TelegramClient(this.session, this.apiId, this.apiHash, {connectionRetries: 5})
 
+		this.channelsIdToNameMap = new Cache();
 	}
 
 	public async connect(): Promise<void> {
@@ -101,11 +105,11 @@ export class TelegramUserServiceV2 {
 			this.processedAddresses.add(extractedData);
 
 			const messageId = message.id;
-			const channel = await this.client.getEntity(peerChannel) as Api.Channel;
+			const username = await this.getUsername(peerChannel);
 
 			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 				channelId,
-				messageLink: `https://t.me/${channel.username}/${messageId}`,
+				messageLink: `https://t.me/${username}/${messageId}`,
 				isEdited: false
 			});
 
@@ -154,12 +158,12 @@ export class TelegramUserServiceV2 {
 				}
 
 				const messageId = message.id;
-				const channel = await this.client.getEntity(peerChannel) as Api.Channel;
+				const username = await this.getUsername(peerChannel);
 
 				// Handle based on whether it's a token or pair address
 				await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 					channelId,
-					messageLink: `https://t.me/${channel.username}/${messageId}`,
+					messageLink: `https://t.me/${username}/${messageId}`,
 					isEdited: true
 				});
 
@@ -184,5 +188,21 @@ https://dexscreener.com/solana/${ca}\n
 			file:resolve(__dirname, '../../images/saulSignal.jpeg'),
 		});
 
+	}
+
+	private async getUsername(peerChannel: PeerChannel): Promise<string> {
+		const usernameInCache = this.channelsIdToNameMap.get(peerChannel.channelId)
+
+		if (usernameInCache) {
+			return usernameInCache;
+		}
+
+		const channel = await this.client.getEntity(peerChannel) as Api.Channel;
+
+		if (channel.username != null) {
+			this.channelsIdToNameMap.put(peerChannel.channelId, channel.username)
+		}
+
+		return channel.username || '';
 	}
 }

@@ -91,7 +91,7 @@ export class SubscriberServiceV2 {
 
 		if (tokenInfoFromDB) {
 			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
-			this.getCallToChannel(tokenInfoFromDB, tokenInfo.baseToken.name)
+			// this.getCallToChannel(tokenInfoFromDB, tokenInfo.baseToken.name)
 		}
 	}
 

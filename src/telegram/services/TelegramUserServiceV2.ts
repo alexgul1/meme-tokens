@@ -34,6 +34,7 @@ export class TelegramUserServiceV2 {
 	private callChannelEntity: any;
 	private maestroBotEntity: any;
 	private readonly channelsIdToNameMap: CacheClass<long, string>
+	private readonly latestBuys: CacheClass<string, boolean>
 
 	constructor() {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
@@ -57,6 +58,7 @@ export class TelegramUserServiceV2 {
 		this.client = new TelegramClient(this.session, this.apiId, this.apiHash, {connectionRetries: 5})
 
 		this.channelsIdToNameMap = new Cache();
+		this.latestBuys = new Cache();
 	}
 
 	public async connect(): Promise<void> {
@@ -104,6 +106,14 @@ export class TelegramUserServiceV2 {
 				return
 			}
 
+			const callInCache = this.latestBuys.get(extractedData)
+
+			if (callInCache) {
+				console.log('We buy this token less than 5 minutes ago', extractedData);
+				return
+			}
+
+			this.latestBuys.put(extractedData, true, 300_000)
 			this.processedAddresses.add(extractedData);
 
 			await this.sendAddressToBot(extractedData)

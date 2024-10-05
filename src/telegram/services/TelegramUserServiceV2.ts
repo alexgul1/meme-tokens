@@ -32,6 +32,7 @@ export class TelegramUserServiceV2 {
 	private readonly processedAddresses: Set<string>;
 	// private callChannelEntity: Entity;
 	private callChannelEntity: any;
+	private maestroBotEntity: any;
 	private readonly channelsIdToNameMap: CacheClass<long, string>
 
 	constructor() {
@@ -76,6 +77,7 @@ export class TelegramUserServiceV2 {
 		await this.connect();
 		await this.handleUpdates()
 		this.callChannelEntity = await this.client.getEntity('SaulSignals')
+		this.maestroBotEntity = await this.client.getEntity('MaestroSniperBot')
 	}
 
 	public async eventHandle(event: NewMessageEvent) {
@@ -88,7 +90,7 @@ export class TelegramUserServiceV2 {
 
 		const channelId = peerChannel.channelId?.toString() || '';
 
-		SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		// SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
 
 		if (this.chatIds.has(channelId)) {
 			const extractedData = extractSolAddress(message.message);
@@ -104,14 +106,7 @@ export class TelegramUserServiceV2 {
 
 			this.processedAddresses.add(extractedData);
 
-			const messageId = message.id;
-			const username = await this.getUsername(peerChannel);
-
-			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
-				channelId,
-				messageLink: `https://t.me/${username}/${messageId}`,
-				isEdited: false
-			});
+			await this.sendAddressToBot(extractedData)
 
 			this.processedAddresses.delete(extractedData);
 		}
@@ -204,5 +199,11 @@ https://dexscreener.com/solana/${ca}\n
 		}
 
 		return channel.username || '';
+	}
+
+	private async sendAddressToBot(address: string) {
+		await this.client.sendMessage(this.maestroBotEntity, {
+			message: address
+		})
 	}
 }

@@ -4,11 +4,9 @@ import './sentry/index';
 
 import dotenv from 'dotenv';
 import {TelegramUserServiceV2} from './telegram/services/TelegramUserServiceV2';
-import {SubscriberServiceV2} from './subscriber/service/SubscriberServiceV2';
 import * as Sentry from '@sentry/node';
 
 import {Connection} from '@solana/web3.js';
-import {TelegramBotService} from './telegram/services/TelegramServices';
 
 dotenv.config();
 
@@ -27,10 +25,8 @@ export const telegramUserService = new TelegramUserServiceV2();
 
 const init = async () => {
 	try {
-		await SubscriberServiceV2.initialization();
 		await telegramUserService.start();
 
-		TelegramBotService.initialize();
 
 		console.log(SHOULD_SWAP)
 

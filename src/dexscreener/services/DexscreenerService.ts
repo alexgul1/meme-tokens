@@ -1,11 +1,12 @@
 import * as Sentry from '@sentry/node';
-import cache from 'memory-cache'
+import {Cache, CacheClass} from 'memory-cache'
 
 import {ITokenPairs} from './ITokenPairs';
 import {IPair} from './IPair';
 
 export class DexscreenerService {
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
+	private static addressToPairsCache: CacheClass<string, ITokenPairs> = new Cache()
 
 	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs|null> {
 		try {
@@ -37,7 +38,7 @@ export class DexscreenerService {
 
 	static async searchTokenByAddress(tokenAddress: string): Promise<ITokenPairs|null> {
 		try {
-			const inCacheResponse = cache.get(tokenAddress)
+			const inCacheResponse = this.addressToPairsCache.get(tokenAddress)
 
 			if (inCacheResponse) {
 				return inCacheResponse
@@ -49,7 +50,7 @@ export class DexscreenerService {
 				const data = await response.json() as ITokenPairs;
 
 				if (data?.pairs.length) {
-					cache.put(tokenAddress, data);
+					this.addressToPairsCache.put(tokenAddress, data);
 				}
 
 				return data

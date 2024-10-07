@@ -32,11 +32,15 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink, isEdited}: TelegramMessageInfo) {
+		console.time('Get token info from dex')
+
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
 		if (!tokenInfo) {
 			return
 		}
+
+		console.timeEnd('Get token info from dex')
 
 		if (processingAddresses.has(tokenInfo.pairAddress)) {
 			Sentry.captureMessage(`SubscriberServiceV2: We processing this token ${tokenInfo.pairAddress}`);
@@ -47,10 +51,14 @@ export class SubscriberServiceV2 {
 
 		processingAddresses.add(tokenInfo.pairAddress)
 
+		console.time('Check token in finished collection')
+
 		const tokenInfoFromFinishedCollection = await this.mongoDBInstance.getEntityFromFinishedCollection({
 			'address': tokenInfo.pairAddress,
 			parsedLink: channelId,
 		})
+
+		console.timeEnd('Check token in finished collection')
 
 		if (tokenInfoFromFinishedCollection) {
 			processingAddresses.delete(tokenInfo.pairAddress)
@@ -61,7 +69,11 @@ export class SubscriberServiceV2 {
 			return;
 		}
 
+		console.time('Check token in current collection')
+
 		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
+
+		console.timeEnd('Check token in current collection')
 
 		if (!tokenInfoFromDB) {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink, isEdited});

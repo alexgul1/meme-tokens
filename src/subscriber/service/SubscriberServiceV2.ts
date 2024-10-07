@@ -36,11 +36,12 @@ export class SubscriberServiceV2 {
 
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 
+		console.timeEnd('Get token info from dex')
+
 		if (!tokenInfo) {
 			return
 		}
 
-		console.timeEnd('Get token info from dex')
 
 		if (processingAddresses.has(tokenInfo.pairAddress)) {
 			Sentry.captureMessage(`SubscriberServiceV2: We processing this token ${tokenInfo.pairAddress}`);

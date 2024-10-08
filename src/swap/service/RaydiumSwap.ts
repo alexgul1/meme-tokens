@@ -65,7 +65,7 @@ class RaydiumSwap {
 	private static FEE = Number(process.env.FEE) || 228000;
 	private static cache: CacheClass<string, ApiPoolInfoV4> = new Cache();
 
-	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<string|undefined> {
+	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<[string|undefined, number|null]> {
 		let localAttempt = 0;
 
 		while (localAttempt <= attempts) {
@@ -82,7 +82,7 @@ class RaydiumSwap {
 					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
 
 					if (!amount || amount < 10) {
-						return '';
+						return [undefined, null];
 					}
 				}
 
@@ -98,9 +98,15 @@ class RaydiumSwap {
 
 				const txid = await RaydiumSwap.sendVersionedTransaction(transaction, 5);
 
+				let price: number | null = null;
+
+				if (!isSoldTransaction) {
+					price = await this.calculateTokenBuyPrice(tokenAddress)
+				}
+
 				console.log(`https://solscan.io/tx/${txid}`);
 
-				return txid;
+				return [txid, price];
 			} catch (e) {
 				localAttempt++;
 
@@ -108,7 +114,7 @@ class RaydiumSwap {
 					Sentry.captureException({message: 'Max retry attempts reached. Swap failed.', e});
 
 					console.error('Max retry attempts reached. Swap failed.');
-					return undefined
+					return [undefined, null]
 				}
 
 				Sentry.captureException({message: 'Error when swap token', e});
@@ -118,7 +124,24 @@ class RaydiumSwap {
 			}
 		}
 
-		return undefined
+		return [undefined, null]
+	}
+
+	public static async calculateTokenBuyPrice(tokenAddress: string): Promise<number|null> {
+		let amount = null;
+
+		for (let i  = 0; i < 10; i++) {
+			amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress)
+
+			if(!amount) {
+				await sleep(1000)
+				continue;
+			}
+
+			return this.buyTokenAmount / amount
+		}
+
+		return amount
 	}
 
 	public static async checkTransactionStatus(trxId: string):Promise<boolean> {

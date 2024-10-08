@@ -80,17 +80,23 @@ export class SubscriberServiceV2 {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink, isEdited});
 
 			if (tokenInfoFromDB) {
+				let newTokenPrice: number| null = null;
+
 				if (SHOULD_SWAP) {
 					console.time('Buy token')
 
-					const trx = await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false);
+					const [trx, price] = await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false);
+
+					newTokenPrice = price
 
 					console.timeEnd('Buy token')
 
 					sendMessageToGroup(tokenInfoFromDB, trx, false)
 				}
 
-				const newTokenPrice = await SolanaService.getTokenPrice(tokenInfoFromDB.address) as number
+				if (!newTokenPrice) {
+					newTokenPrice = await SolanaService.getTokenPrice(tokenInfoFromDB.address) as number
+				}
 
 				await this.putNewTokenToDB({
 					...tokenInfoFromDB,
@@ -137,18 +143,18 @@ export class SubscriberServiceV2 {
 
 		if (shouldBeFinished && SHOULD_SWAP) {
 			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
-				async (trx) => {
-					sendMessageToGroup(token, trx, true)
+				async (response) => {
+					sendMessageToGroup(token, response[0], true)
 
 					sleep(45000).then(() => {
 						console.log('Sale of the remaining balance')
-						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((trx) => {
-							sendMessageToGroup(token, trx, true)
+						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
+							sendMessageToGroup(token, response[0], true)
 
 							sleep(45000).then(() => {
 								console.log('Sale of the remaining balance 2')
-								RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((trx) => {
-									sendMessageToGroup(token, trx, true)
+								RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
+									sendMessageToGroup(token, response[0], true)
 								})
 							})
 						})

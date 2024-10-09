@@ -167,6 +167,10 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
+		if (shouldBeFinished) {
+			console.log(`initial - ${token.initialPrice}, last - ${price}, roe - ${roe}`)
+		}
+
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', token.address, {

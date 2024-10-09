@@ -57,6 +57,10 @@ export class TelegramBotService {
 	}
 
 	static async sendTransactionMessage(params: MessageParams): Promise<void> {
+		if (!this.bot) {
+			return
+		}
+
 		const {token, action, signalLink, transactionLink, purchaseTime, chartLink, isEdited} = params;
 		const template = action === 'buy' ? this.PURCHASE_TEMPLATE : this.SALE_TEMPLATE;
 

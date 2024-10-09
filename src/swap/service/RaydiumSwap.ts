@@ -74,12 +74,12 @@ class RaydiumSwap {
 
 				const poolKeys = jsonInfo2PoolKeys(jsonPoolKeys);
 
-				let amount = isSoldTransaction ? await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount;
+				let amount = isSoldTransaction ? await RaydiumSwap.getTokensAmountInWallet(tokenAddress, 55) : this.buyTokenAmount;
 
 				if (isSoldTransaction && amount < 1) {
 					await sleep(15000)
 
-					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
+					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress, 55);
 
 					if (!amount || amount < 10) {
 						return [undefined, null];
@@ -178,7 +178,7 @@ class RaydiumSwap {
 		}))
 	}
 
-	public static async getTokensAmountInWallet(token: string): Promise<number> {
+	public static async getTokensAmountInWallet(token: string, percent = 100): Promise<number> {
 		const walletTokenAccount = await CONNECTION.getTokenAccountsByOwner(this.wallet.publicKey, {
 			mint: new PublicKey(token)
 		})
@@ -193,7 +193,7 @@ class RaydiumSwap {
 
 			const mintInfo = await CONNECTION.getParsedAccountInfo(mintAddress);
 			const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals ?? 0;
-			return amount / (10 ** decimals);
+			return (amount / (10 ** decimals)) / 100 * percent;
 		}
 
 		return 0

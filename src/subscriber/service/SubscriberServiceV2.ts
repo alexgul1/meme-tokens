@@ -141,26 +141,24 @@ export class SubscriberServiceV2 {
 		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
 
 		if (shouldBeFinished && SHOULD_SWAP) {
-			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
-				async (response) => {
-					sendMessageToGroup(token, response[0], true)
+			await this.initiateSellTransaction(token)
+		}
 
-					sleep(45000).then(() => {
-						console.log('Sale of the remaining balance')
-						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
-							sendMessageToGroup(token, response[0], true)
+	}
 
-							sleep(45000).then(() => {
-								console.log('Sale of the remaining balance 2')
-								RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
-									sendMessageToGroup(token, response[0], true)
-								})
-							})
-						})
-					})
+	private static async initiateSellTransaction(token: Token, retries = 3) {
+		for (let i = 0; i < retries; i++) {
+			const [txId] = await RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true);
 
-				}
-			)
+			sendMessageToGroup(token, txId, true)
+
+			await sleep(45000);
+
+			const txStatus = txId ? await RaydiumSwap.checkTransactionStatus(txId) : false;
+
+			if (txStatus) {
+				return;
+			}
 		}
 
 	}

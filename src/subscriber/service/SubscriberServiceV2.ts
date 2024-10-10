@@ -98,11 +98,10 @@ export class SubscriberServiceV2 {
 					newTokenPrice = await SolanaService.getTokenPrice(tokenInfoFromDB.address) as number
 				}
 
-				await this.putNewTokenToDB({
-					...tokenInfoFromDB,
-					initialPrice: newTokenPrice,
-					currentPrice: newTokenPrice
-				})
+				tokenInfoFromDB.initialPrice = newTokenPrice;
+				tokenInfoFromDB.currentPrice = newTokenPrice
+
+				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
 		}
 

@@ -4,9 +4,6 @@ import {MongoService} from '../../mongo/services/MongoService';
 import {Token} from '../../mongo/types/Token';
 import {IPair} from '../../dexscreener/services/IPair';
 import {DexscreenerService} from '../../dexscreener/services/DexscreenerService';
-import {
-	isCurrentDateGreaterThanStartDate
-} from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP, telegramUserService} from '../../index';

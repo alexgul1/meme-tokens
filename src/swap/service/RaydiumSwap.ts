@@ -74,12 +74,12 @@ class RaydiumSwap {
 
 				const poolKeys = jsonInfo2PoolKeys(jsonPoolKeys);
 
-				let amount = isSoldTransaction ? await RaydiumSwap.getTokensAmountInWallet(tokenAddress, 55) : this.buyTokenAmount;
+				let amount = isSoldTransaction ? await RaydiumSwap.getTokensAmountInWallet(tokenAddress) : this.buyTokenAmount;
 
 				if (isSoldTransaction && amount < 1) {
 					await sleep(15000)
 
-					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress, 55);
+					amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress);
 
 					if (!amount || amount < 10) {
 						return [undefined, null];

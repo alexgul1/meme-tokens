@@ -137,43 +137,33 @@ export class SubscriberServiceV2 {
 		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
 
 		if (shouldBeFinished && SHOULD_SWAP) {
-			RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then(
-				async (response) => {
-					sendMessageToGroup(token, response[0], true)
+			await this.initiateSellTransaction(token)
+		}
 
-					sleep(45000).then(async () => {
-						const wasSold = response[0] ? await RaydiumSwap.checkTransactionStatus(response[0]!) : false;
+	}
 
-						if (wasSold) {
-							return;
-						}
+	private static async initiateSellTransaction(token: Token, retries = 3) {
+		for (let i = 0; i < retries; i++) {
+			const [txId] = await RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true);
 
-						console.log('Sale of the remaining balance')
-						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
-							sendMessageToGroup(token, response[0], true)
+			sendMessageToGroup(token, txId, true)
 
-							sleep(45000).then(async () => {
-								const wasSold = response[0] ? await RaydiumSwap.checkTransactionStatus(response[0]!) : false;
+			await sleep(45000);
 
-								if (wasSold) {
-									return;
-								}
+			const txStatus = txId ? await RaydiumSwap.checkTransactionStatus(txId) : false;
 
-								console.log('Sale of the remaining balance 2')
-								RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
-									sendMessageToGroup(token, response[0], true)
-								})
-							})
-						})
-					})
-
-				}
-			)
+			if (txStatus) {
+				return;
+			}
 		}
 
 	}
 
 	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
+		if (shouldBeFinished) {
+			console.log(`initial - ${token.initialPrice}, last - ${price}, roe - ${roe}`)
+		}
+
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		await this.mongoDBInstance.updateEntity('address', token.address, {

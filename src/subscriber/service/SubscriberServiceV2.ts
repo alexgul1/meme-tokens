@@ -135,8 +135,7 @@ export class SubscriberServiceV2 {
 	public static async handlePriceChange(token: Token, price: number) {
 		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
 
-		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
-			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
+		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE;
 
 		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
 
@@ -145,12 +144,24 @@ export class SubscriberServiceV2 {
 				async (response) => {
 					sendMessageToGroup(token, response[0], true)
 
-					sleep(45000).then(() => {
+					sleep(45000).then(async () => {
+						const wasSold = response[0] ? await RaydiumSwap.checkTransactionStatus(response[0]!) : false;
+
+						if (wasSold) {
+							return;
+						}
+
 						console.log('Sale of the remaining balance')
 						RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
 							sendMessageToGroup(token, response[0], true)
 
-							sleep(45000).then(() => {
+							sleep(45000).then(async () => {
+								const wasSold = response[0] ? await RaydiumSwap.checkTransactionStatus(response[0]!) : false;
+
+								if (wasSold) {
+									return;
+								}
+
 								console.log('Sale of the remaining balance 2')
 								RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true).then((response) => {
 									sendMessageToGroup(token, response[0], true)

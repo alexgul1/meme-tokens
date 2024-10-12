@@ -1,8 +1,7 @@
-
 import {AccountLayout} from '@solana/spl-token';
 
 import {
-	Keypair,
+	Keypair, LAMPORTS_PER_SOL,
 	PublicKey,
 	SystemProgram,
 	TransactionMessage,
@@ -31,7 +30,7 @@ import {Cache, CacheClass} from 'memory-cache';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
-const getRandomInt = (n:number) => {
+const getRandomInt = (n: number) => {
 	return Math.floor(Math.random() * n);
 }
 
@@ -59,13 +58,13 @@ class RaydiumSwap {
 		new PublicKey('3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT')
 	]
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
-	private static buyTokenAmount:number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
+	public static buyTokenAmount: number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
 	private static SOLD_SLIPPAGE = Number(process.env.SOLD_SLIPPAGE) || 5;
 	private static BUY_SLIPPAGE = Number(process.env.BUY_SLIPPAGE) || 10;
 	private static FEE = Number(process.env.FEE) || 228000;
 	private static cache: CacheClass<string, ApiPoolInfoV4> = new Cache();
 
-	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<[string|undefined, number|null]> {
+	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<[string | undefined, number | null]> {
 		let localAttempt = 0;
 
 		while (localAttempt <= attempts) {
@@ -118,7 +117,7 @@ class RaydiumSwap {
 				}
 
 				Sentry.captureException({message: 'Error when swap token', e});
-				console.log( 'Error when swap token', e);
+				console.log('Error when swap token', e);
 
 				await sleep(2000)
 			}
@@ -127,13 +126,13 @@ class RaydiumSwap {
 		return [undefined, null]
 	}
 
-	public static async calculateTokenBuyPrice(tokenAddress: string): Promise<number|null> {
+	public static async calculateTokenBuyPrice(tokenAddress: string): Promise<number | null> {
 		let amount = null;
 
-		for (let i  = 0; i < 10; i++) {
+		for (let i = 0; i < 10; i++) {
 			amount = await RaydiumSwap.getTokensAmountInWallet(tokenAddress)
 
-			if(!amount) {
+			if (!amount) {
 				await sleep(1000)
 				continue;
 			}
@@ -144,20 +143,39 @@ class RaydiumSwap {
 		return amount
 	}
 
-	public static async checkTransactionStatus(trxId: string):Promise<boolean> {
+	public static async checkTransactionStatus(trxId: string): Promise<([boolean, {
+		postBalance: number;
+		preBalance: number
+	}])> {
+		const solBalance = {
+			preBalance: 0,
+			postBalance: 0
+		}
+
 		try {
 			const transaction = await CONNECTION.getParsedTransaction(trxId, {maxSupportedTransactionVersion: 0});
 
 			if (!transaction) {
-				return false
+				return [false, solBalance]
 			}
 
 			const hasError = transaction.meta?.err
 
-			return !hasError;
+			if (!hasError) {
+				const preBalances = transaction.meta!.preBalances;
+				const postBalances = transaction.meta!.postBalances;
+
+
+				return [!hasError, {
+					preBalance: preBalances[0] / LAMPORTS_PER_SOL,
+					postBalance: postBalances[0] / LAMPORTS_PER_SOL
+				}]
+			}
+
+			return [!hasError, solBalance];
 		} catch (e) {
 			Sentry.captureException(e)
-			return false;
+			return [false, solBalance];
 		}
 	}
 
@@ -206,12 +224,16 @@ class RaydiumSwap {
 		poolKeys,
 		maxLamports,
 		fixedSide = 'in'
-	}: SwapTransaction): Promise<{transaction: VersionedTransaction, executionPrice: Price}> {
+	}: SwapTransaction): Promise<{ transaction: VersionedTransaction, executionPrice: Price }> {
 		const directionIn = poolKeys.quoteMint.toString() == toToken;
 
-		const slippage= fixedSide === 'in' ? this.BUY_SLIPPAGE : this.SOLD_SLIPPAGE;
+		const slippage = fixedSide === 'in' ? this.BUY_SLIPPAGE : this.SOLD_SLIPPAGE;
 
-		const { minAmountOut, amountIn, executionPrice,} = await this.calcAmountOut(poolKeys, amount, directionIn, slippage);
+		const {
+			minAmountOut,
+			amountIn,
+			executionPrice,
+		} = await this.calcAmountOut(poolKeys, amount, directionIn, slippage);
 		const userTokenAccounts = await this.getOwnerTokenAccounts();
 
 		const swapTransaction = await Liquidity.makeSwapInstructionSimple({
@@ -259,7 +281,7 @@ class RaydiumSwap {
 
 		versionedTransaction.sign([this.wallet.payer]);
 
-		return {transaction:versionedTransaction, executionPrice: executionPrice!};
+		return {transaction: versionedTransaction, executionPrice: executionPrice!};
 	}
 
 	public static async sendVersionedTransaction(tx: VersionedTransaction, maxRetries?: number) {
@@ -348,7 +370,7 @@ class RaydiumSwap {
 		if (lpMintAccount === null) throw Error(' get lp mint info error')
 		const lpMintInfo = SPL_MINT_LAYOUT.decode(lpMintAccount.data as Buffer)
 
-		const infoResult =  {
+		const infoResult = {
 			id,
 			baseMint: info.baseMint.toString(),
 			quoteMint: info.quoteMint.toString(),

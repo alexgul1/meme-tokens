@@ -118,6 +118,15 @@ export class MongoService implements IMongoService<Token> {
 		return await collection.findOne(object);
 	}
 
+	public async updateEntityInFinishedCollection(object: Record<string, unknown>, update: Partial<Token>): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+
+		const collection: Collection<Token> = this.db.collection(this._finishedCollectionName);
+		await collection.updateOne(object, { $set: update });
+	}
+
 	public async finishTokenSubscription(key: string, value: unknown): Promise<void> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');

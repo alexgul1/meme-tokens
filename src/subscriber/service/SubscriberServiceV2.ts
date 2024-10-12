@@ -15,6 +15,10 @@ import {MessageParams, TelegramBotService} from '../../telegram/services/Telegra
 
 const processingAddresses = new Set();
 
+export const percentDiffBetweenTwoNumbers = (first: number, second: number): number => {
+	return ((first - second) / second) * 100
+}
+
 
 export class SubscriberServiceV2 {
 	private static mongoDBInstance: MongoService
@@ -133,7 +137,7 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async handlePriceChange(token: Token, price: number) {
-		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
+		const roe = percentDiffBetweenTwoNumbers(price, token.initialPrice)
 
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
@@ -147,6 +151,11 @@ export class SubscriberServiceV2 {
 	}
 
 	private static async initiateSellTransaction(token: Token, retries = 3) {
+		const defaultSolBalances = {
+			preBalance: 0,
+			postBalance: 0
+		};
+
 		for (let i = 0; i < retries; i++) {
 			const [txId] = await RaydiumSwap.submitTransaction(token.address, token.tokenAddress, true);
 
@@ -154,13 +163,32 @@ export class SubscriberServiceV2 {
 
 			await sleep(45000);
 
-			const txStatus = txId ? await RaydiumSwap.checkTransactionStatus(txId) : false;
+			const [txStatus, balances] = txId ? await RaydiumSwap.checkTransactionStatus(txId) : [false, defaultSolBalances];
 
 			if (txStatus) {
+				const receivedAmount  = balances?.postBalance - balances?.preBalance;
+
+				const realRoe = percentDiffBetweenTwoNumbers(receivedAmount, RaydiumSwap.buyTokenAmount);
+
+				await this.mongoDBInstance.updateEntityInFinishedCollection({
+					address: token.address,
+					parsedLink: token.parsedLink
+				},
+				{
+					realRoe: realRoe
+				})
+
 				return;
 			}
 		}
 
+		await this.mongoDBInstance.updateEntityInFinishedCollection({
+			address: token.address,
+			parsedLink: token.parsedLink
+		},
+		{
+			realRoe: 0
+		})
 	}
 
 	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {

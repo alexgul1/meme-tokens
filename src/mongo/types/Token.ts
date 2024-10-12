@@ -12,6 +12,7 @@ export interface Token {
 	provider: string; // Provider on which we get info
 	status: 'InProgress' | 'Finished'; // Token status
 	roe?: number | null; // Percent of ROE
+	realRoe?: number | null; // Real percent calculated on sell transaction
 	messageLink?: string;
 	isEdited?: boolean;
 }

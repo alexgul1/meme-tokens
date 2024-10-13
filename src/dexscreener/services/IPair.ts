@@ -46,7 +46,7 @@ export interface IPair {
         h24: number;
     };
     liquidity?: {
-        usd?: number;
+        usd: number;
         base: number;
         quote: number;
     };

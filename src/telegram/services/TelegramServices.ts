@@ -13,6 +13,7 @@ export type MessageParams = {
 export class TelegramBotService {
 	private static bot: TelegramBot;
 	private static groupID: string = process.env.TELEGRAM_STAT_GROUP_ID!
+	private static messageThreadId: number = parseInt(process.env.TELEGRAM_STAT_MESSAGE_THREAD_ID!)
 
 	// Define message templates
 	private static readonly PURCHASE_TEMPLATE = `
@@ -73,7 +74,12 @@ export class TelegramBotService {
 		;
 
 		try {
-			await this.bot.sendMessage(this.groupID, message, {parse_mode: 'HTML'});
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore
+			await this.bot.sendMessage(this.groupID, message, {
+				parse_mode: 'HTML',
+				message_thread_id: this.messageThreadId
+			});
 		} catch (error) {
 			console.error('Error sending message: ', error);
 		}
@@ -86,7 +92,11 @@ export class TelegramBotService {
 			return;
 		}
 		try {
-			await this.bot.sendMessage(this.groupID, message);
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore
+			await this.bot.sendMessage(this.groupID, message, {
+				message_thread_id: this.messageThreadId
+			});
 			console.info(`Сообщение отправлено в чат: ${this.groupID}`);
 		} catch (error) {
 			console.error('Ошибка при отправке сообщения: ', error);

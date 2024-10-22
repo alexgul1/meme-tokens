@@ -3,7 +3,7 @@ import {AccountLayout} from '@solana/spl-token';
 import {
 	Keypair, LAMPORTS_PER_SOL,
 	PublicKey,
-	SystemProgram,
+	// SystemProgram,
 	TransactionMessage,
 	VersionedTransaction
 } from '@solana/web3.js'
@@ -25,14 +25,14 @@ import {
 import {Wallet} from '@coral-xyz/anchor'
 import bs58 from 'bs58'
 import * as Sentry from '@sentry/node';
-import {CONNECTION, JITO_CONNECTION} from '../../index';
+import {CONNECTION, STAKED_CONNECTION} from '../../index';
 import {Cache, CacheClass} from 'memory-cache';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
-const getRandomInt = (n: number) => {
-	return Math.floor(Math.random() * n);
-}
+// const getRandomInt = (n: number) => {
+// 	return Math.floor(Math.random() * n);
+// }
 
 
 type SwapTransaction = {
@@ -48,15 +48,15 @@ type SwapTransaction = {
  */
 class RaydiumSwap {
 	private static wallet: Wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(process.env.WALLET_PRIVATE_KEY!))))
-	private static JitTipArray = [new PublicKey('96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5'),
-		new PublicKey('HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe'),
-		new PublicKey('Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY'),
-		new PublicKey('ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49'),
-		new PublicKey('DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh'),
-		new PublicKey('ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt'),
-		new PublicKey('DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL'),
-		new PublicKey('3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT')
-	]
+	// private static JitTipArray = [new PublicKey('96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5'),
+	// 	new PublicKey('HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe'),
+	// 	new PublicKey('Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY'),
+	// 	new PublicKey('ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49'),
+	// 	new PublicKey('DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh'),
+	// 	new PublicKey('ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt'),
+	// 	new PublicKey('DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL'),
+	// 	new PublicKey('3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT')
+	// ]
 	private static SOLAddress = 'So11111111111111111111111111111111111111112';
 	public static buyTokenAmount: number = Number(process.env.BUY_SOL_AMOUNT) || 0.1;
 	private static SOLD_SLIPPAGE = Number(process.env.SOLD_SLIPPAGE) || 5;
@@ -88,7 +88,7 @@ class RaydiumSwap {
 				const swapTransactionParams = {
 					toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 					poolKeys,
-					maxLamports: this.FEE / 2,
+					maxLamports: this.FEE,
 					amount: amount,
 					fixedSide: isSoldTransaction ? 'out' : 'in'
 				} as SwapTransaction
@@ -260,16 +260,16 @@ class RaydiumSwap {
 		const instructions = swapTransaction.innerTransactions[0].instructions.filter(Boolean);
 
 
-		const tipKey = getRandomInt(8);
+		// const tipKey = getRandomInt(8);
 
-		// Добавляем инструкцию для чаевых в транзакцию (например, 0.01 SOL)
-		const tipInstruction = SystemProgram.transfer({
-			fromPubkey: this.wallet.publicKey, // Публичный ключ вашего кошелька
-			toPubkey: this.JitTipArray[tipKey] || this.JitTipArray[0],
-			lamports: this.FEE / 2,
-		});
+		// // Добавляем инструкцию для чаевых в транзакцию (например, 0.01 SOL)
+		// const tipInstruction = SystemProgram.transfer({
+		// 	fromPubkey: this.wallet.publicKey, // Публичный ключ вашего кошелька
+		// 	toPubkey: this.JitTipArray[tipKey] || this.JitTipArray[0],
+		// 	lamports: this.FEE / 2,
+		// });
 
-		instructions.push(tipInstruction);
+		// instructions.push(tipInstruction);
 
 		const versionedTransaction = new VersionedTransaction(
 			new TransactionMessage({
@@ -285,7 +285,7 @@ class RaydiumSwap {
 	}
 
 	public static async sendVersionedTransaction(tx: VersionedTransaction, maxRetries?: number) {
-		const txid = await JITO_CONNECTION.sendTransaction(tx, {
+		const txid = await STAKED_CONNECTION.sendTransaction(tx, {
 			skipPreflight: true,
 			maxRetries: maxRetries,
 		});

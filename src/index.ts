@@ -18,9 +18,13 @@ export const CONNECTION = new Connection(process.env.SOLANA_CONNECTION_URL || 'h
 	wsEndpoint: process.env.WS_SOLANA_CONNECTION_URL,
 });
 
-export const JITO_CONNECTION = new Connection(process.env.JITO_CONNECTION_URL || 'https://api.mainnet-beta.solana.com', {
-	commitment: 'confirmed',
-});
+export const STAKED_CONNECTION = new Connection(process.env.SOLANA_STAKED_URL || process.env.SOLANA_CONNECTION_URL || 'https://api.mainnet-beta.solana.com', {
+	commitment: 'confirmed'
+})
+
+// export const JITO_CONNECTION = new Connection(process.env.JITO_CONNECTION_URL || 'https://api.mainnet-beta.solana.com', {
+// 	commitment: 'confirmed',
+// });
 
 
 export const telegramUserService = new TelegramUserServiceV2();

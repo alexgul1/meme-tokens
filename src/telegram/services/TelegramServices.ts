@@ -54,6 +54,7 @@ export class TelegramBotService {
 	static initialize(): void {
 		if (!this.bot) {
 			this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, {polling: true});
+			console.log('TG bot initialized', this.bot)
 		}
 	}
 

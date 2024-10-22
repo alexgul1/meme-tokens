@@ -88,7 +88,7 @@ class RaydiumSwap {
 				const swapTransactionParams = {
 					toToken: isSoldTransaction ? this.SOLAddress : tokenAddress,
 					poolKeys,
-					maxLamports: 0,
+					maxLamports: this.FEE / 2,
 					amount: amount,
 					fixedSide: isSoldTransaction ? 'out' : 'in'
 				} as SwapTransaction
@@ -266,7 +266,7 @@ class RaydiumSwap {
 		const tipInstruction = SystemProgram.transfer({
 			fromPubkey: this.wallet.publicKey, // Публичный ключ вашего кошелька
 			toPubkey: this.JitTipArray[tipKey] || this.JitTipArray[0],
-			lamports: this.FEE,
+			lamports: this.FEE / 2,
 		});
 
 		instructions.push(tipInstruction);

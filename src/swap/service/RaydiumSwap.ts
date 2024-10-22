@@ -305,25 +305,6 @@ class RaydiumSwap {
 		return txid
 	}
 
-	public static async warmUpStakedEndpoint() {
-		setInterval(async () => {
-			try {
-				await fetch(STAKED_CONNECTION.rpcEndpoint, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						jsonrpc: '2.0',
-						id: '1',
-						method: 'getHealth',
-					}),
-				})
-			} catch (e) {
-				console.log(e)
-			}
-
-		}, 2500)
-	}
-
 	/**
 	 * Calculates the amount out for a swap.
 	 * @async

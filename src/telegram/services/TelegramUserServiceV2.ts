@@ -9,7 +9,6 @@ import {extractSolAddress} from '../utils/addressExtractor';
 
 import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
-import {resolve} from 'path';
 // import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
 import  {Cache, CacheClass} from 'memory-cache';
 import long = Api.long;
@@ -19,8 +18,6 @@ export type TelegramMessageInfo = {
 	messageLink: string,
 	isEdited?: boolean
 }
-
-console.log(resolve(__dirname, '../../images/saulSignal.jpeg'))
 
 
 export class TelegramUserServiceV2 {

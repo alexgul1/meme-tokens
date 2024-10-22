@@ -9,7 +9,7 @@ import {
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
-import {SHOULD_SWAP, telegramUserService} from '../../index';
+import {SHOULD_SWAP} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
 
@@ -246,17 +246,17 @@ export class SubscriberServiceV2 {
 		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)
 	}
 
-	public static async getCallToChannel(token: Token, tokenName: string): Promise<void> {
-		const isExists = await this.mongoDBInstance.checkIsCallExists({address: token.address})
-
-		if (isExists) {
-			console.log('Call Exists')
-			return;
-		}
-
-		this.mongoDBInstance.addCallToDB(token)
-		telegramUserService.sendMessageToCallChannel(token.name, tokenName, token.address)
-	}
+	// public static async getCallToChannel(token: Token, tokenName: string): Promise<void> {
+	// 	const isExists = await this.mongoDBInstance.checkIsCallExists({address: token.address})
+	//
+	// 	if (isExists) {
+	// 		console.log('Call Exists')
+	// 		return;
+	// 	}
+	//
+	// 	this.mongoDBInstance.addCallToDB(token)
+	// 	telegramUserService.sendMessageToCallChannel(token.name, tokenName, token.address)
+	// }
 }
 
 export const sendMessageToGroup = async (token: Token, trxId: string | undefined, isSold: boolean): Promise<void> => {

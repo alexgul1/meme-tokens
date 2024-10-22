@@ -10,7 +10,7 @@ import {extractSolAddress} from '../utils/addressExtractor';
 import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 import {resolve} from 'path';
-import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
+// import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
 import  {Cache, CacheClass} from 'memory-cache';
 import long = Api.long;
 
@@ -31,7 +31,7 @@ export class TelegramUserServiceV2 {
 	private readonly chatIds: Set<string>;
 	private readonly processedAddresses: Set<string>;
 	// private callChannelEntity: Entity;
-	private callChannelEntity: any;
+	// private callChannelEntity: any;
 	private readonly channelsIdToNameMap: CacheClass<long, string>
 
 	constructor() {
@@ -73,9 +73,14 @@ export class TelegramUserServiceV2 {
 	}
 
 	public async start(): Promise<void> {
-		await this.connect();
-		await this.handleUpdates()
-		this.callChannelEntity = await this.client.getEntity('SaulSignals')
+		try {
+			await this.connect();
+			await this.handleUpdates()
+			// this.callChannelEntity = await this.client.getEntity('SaulSignals')
+		} catch (e) {
+			console.log(e)
+		}
+
 	}
 
 	public async eventHandle(event: NewMessageEvent) {
@@ -172,23 +177,23 @@ export class TelegramUserServiceV2 {
 		}
 	}
 
-	public async sendMessageToCallChannel(ticker: string, tokenName:string, ca: string) {
-		const promoText = await generateDetailedMemeTokenPromo(ticker, tokenName) || 'aped some **$${ticker}**. Be safe with entries.'
-
-		const messageText = `🔥 (SOL) **$${ticker}**
-Saul Signals\n
-${promoText}\n
-**CA:** \`${ca}\`\n
-https://dexscreener.com/solana/${ca}\n
-@SaulSignals
-    `;
-
-		await this.client.sendMessage(this.callChannelEntity,{
-			message: messageText,
-			file:resolve(__dirname, '../../images/saulSignal.jpeg'),
-		});
-
-	}
+	// 	public async sendMessageToCallChannel(ticker: string, tokenName:string, ca: string) {
+	// 		const promoText = await generateDetailedMemeTokenPromo(ticker, tokenName) || 'aped some **$${ticker}**. Be safe with entries.'
+	//
+	// 		const messageText = `🔥 (SOL) **$${ticker}**
+	// Saul Signals\n
+	// ${promoText}\n
+	// **CA:** \`${ca}\`\n
+	// https://dexscreener.com/solana/${ca}\n
+	// @SaulSignals
+	//     `;
+	//
+	// 		await this.client.sendMessage(this.callChannelEntity,{
+	// 			message: messageText,
+	// 			file:resolve(__dirname, '../../images/saulSignal.jpeg'),
+	// 		});
+	//
+	// 	}
 
 	private async getUsername(peerChannel: PeerChannel): Promise<string> {
 		const usernameInCache = this.channelsIdToNameMap.get(peerChannel.channelId)

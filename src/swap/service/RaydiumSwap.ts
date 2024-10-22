@@ -321,7 +321,7 @@ class RaydiumSwap {
 				console.log(e)
 			}
 
-		}, 5000)
+		}, 2500)
 	}
 
 	/**

@@ -9,6 +9,7 @@ import * as Sentry from '@sentry/node';
 
 import {Connection} from '@solana/web3.js';
 import {TelegramBotService} from './telegram/services/TelegramServices';
+import RaydiumSwap from './swap/service/RaydiumSwap';
 
 dotenv.config();
 
@@ -35,6 +36,10 @@ const init = async () => {
 		await telegramUserService.start();
 
 		TelegramBotService.initialize();
+
+		console.log('STAKED_CONNECTION.rpcEndpoint', STAKED_CONNECTION.rpcEndpoint)
+		RaydiumSwap.warmUpStakedEndpoint()
+
 
 		console.log(SHOULD_SWAP)
 

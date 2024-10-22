@@ -266,7 +266,7 @@ export const sendMessageToGroup = async (token: Token, trxId: string | undefined
 		signalLink: token.messageLink,
 		transactionLink: trxId ? `https://solscan.io/tx/${trxId}` : '',
 		purchaseTime: token.startDate,
-		chartLink: `https://dexscreener.com/solana/${token.address}?maker=73ErWrfKWaHXur3fsKyHxyC88DoBTVSM9j7bivJ3JPty`,
+		chartLink: `https://dexscreener.com/solana/${token.address}?maker=3rwyAJjvVMjbnpy3cbpydbMv8XZqDeVyESu48BdAurBh`,
 		isEdited: token.isEdited
 	} as MessageParams
 

@@ -14,6 +14,7 @@ import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
 
 const processingAddresses = new Set();
+const parsedAddresses = new Set();
 
 export const percentDiffBetweenTwoNumbers = (first: number, second: number): number => {
 	return ((first - second) / second) * 100
@@ -36,6 +37,13 @@ export class SubscriberServiceV2 {
 	}
 
 	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink, isEdited}: TelegramMessageInfo) {
+		if (parsedAddresses.has(tokenAddress)) {
+			console.log('SubscriberServiceV2: We processing this address from TG', tokenAddress)
+			return;
+		}
+
+		parsedAddresses.add(tokenAddress);
+
 		console.time('Get token info from dex')
 
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
@@ -43,6 +51,7 @@ export class SubscriberServiceV2 {
 		console.timeEnd('Get token info from dex')
 
 		if (!tokenInfo) {
+			parsedAddresses.delete(tokenAddress);
 			return
 		}
 
@@ -55,6 +64,7 @@ export class SubscriberServiceV2 {
 		}
 
 		processingAddresses.add(tokenInfo.pairAddress)
+		parsedAddresses.delete(tokenAddress);
 
 		console.time('Check token in finished collection')
 

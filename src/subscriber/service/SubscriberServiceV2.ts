@@ -142,7 +142,7 @@ export class SubscriberServiceV2 {
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
 			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
 
-		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
+		await this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
 
 		if (shouldBeFinished && SHOULD_SWAP) {
 			await this.initiateSellTransaction(token)
@@ -170,25 +170,13 @@ export class SubscriberServiceV2 {
 
 				const realRoe = percentDiffBetweenTwoNumbers(receivedAmount, RaydiumSwap.buyTokenAmount);
 
-				await this.mongoDBInstance.updateEntityInFinishedCollection({
-					address: token.address,
-					parsedLink: token.parsedLink
-				},
-				{
-					realRoe: realRoe
-				})
+				await this.updateRealRoeInFinishedCollection(token, realRoe)
 
 				return;
 			}
 		}
 
-		await this.mongoDBInstance.updateEntityInFinishedCollection({
-			address: token.address,
-			parsedLink: token.parsedLink
-		},
-		{
-			realRoe: 0
-		})
+		await this.updateRealRoeInFinishedCollection(token, 0)
 	}
 
 	public static async updateTokenPriceInDB(token: Token, price: number, roe: number, shouldBeFinished: boolean) {
@@ -238,6 +226,23 @@ export class SubscriberServiceV2 {
 			isEdited: messageInfo.isEdited,
 			provider: 'Solana',
 			status: 'InProgress',
+		}
+	}
+
+	private static async updateRealRoeInFinishedCollection(token: Token, realRoe: number) {
+		const entityFromFinished = await this.mongoDBInstance.getEntityFromFinishedCollection({
+			address: token.address,
+			parsedLink: token.parsedLink
+		})
+
+		if (entityFromFinished && !entityFromFinished.realRoe) {
+			await this.mongoDBInstance.updateEntityInFinishedCollection({
+				address: token.address,
+				parsedLink: token.parsedLink
+			},
+			{
+				realRoe: realRoe
+			})
 		}
 	}
 

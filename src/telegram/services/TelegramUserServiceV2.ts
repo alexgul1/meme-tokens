@@ -39,7 +39,7 @@ export class TelegramUserServiceV2 {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
 		this.apiHash = process.env.TELEGRAM_API_HASH as string;
 		this.chatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST as string).split(','))
-		this.bannedChatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST || '').split(','))
+		this.bannedChatIds = new Set((process.env.TELEGRAM_BANNED_CHANNELS_LIST || '').split(','))
 
 		if (!this.apiId || !this.apiId) {
 			throw new Error('Environment variables TELEGRAM_API_ID and TELEGRAM_API_HASH must be set');

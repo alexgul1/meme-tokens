@@ -29,6 +29,7 @@ export class TelegramUserServiceV2 {
 	private readonly apiId: number;
 	private readonly apiHash: string;
 	private readonly chatIds: Set<string>;
+	private readonly bannedChatIds: Set<string>;
 	private readonly processedAddresses: Set<string>;
 	// private callChannelEntity: Entity;
 	private callChannelEntity: any;
@@ -38,6 +39,7 @@ export class TelegramUserServiceV2 {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
 		this.apiHash = process.env.TELEGRAM_API_HASH as string;
 		this.chatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST as string).split(','))
+		this.bannedChatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST || '').split(','))
 
 		if (!this.apiId || !this.apiId) {
 			throw new Error('Environment variables TELEGRAM_API_ID and TELEGRAM_API_HASH must be set');
@@ -48,6 +50,7 @@ export class TelegramUserServiceV2 {
 		}
 
 		console.log('SUBSCRIBED TO', this.chatIds)
+		console.log('BANNED IDS', this.bannedChatIds)
 
 		this.processedAddresses = new Set();
 
@@ -88,9 +91,11 @@ export class TelegramUserServiceV2 {
 
 		const channelId = peerChannel.channelId?.toString() || '';
 
-		SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		const isChatAllowed = this.chatIds.has(channelId) && !this.bannedChatIds.has(channelId);
 
-		if (this.chatIds.has(channelId)) {
+		SubscriberServiceV2.putIntoDBInfoMessage(isChatAllowed, !!extractSolAddress(message.message))
+
+		if (isChatAllowed) {
 			const extractedData = extractSolAddress(message.message);
 
 			if (!extractedData) {
@@ -127,9 +132,11 @@ export class TelegramUserServiceV2 {
 
 		const channelId = peerChannel.channelId?.toString() || '';
 
-		SubscriberServiceV2.putIntoDBInfoMessage(this.chatIds.has(channelId), !!extractSolAddress(message.message))
+		const isChatAllowed = this.chatIds.has(channelId) && !this.bannedChatIds.has(channelId);
 
-		if (this.chatIds.has(channelId)) {
+		SubscriberServiceV2.putIntoDBInfoMessage(isChatAllowed, !!extractSolAddress(message.message))
+
+		if (isChatAllowed) {
 			const editDateTimestamp = message.editDate;
 			const originalDateTimestamp = message.date;
 

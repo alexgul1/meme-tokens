@@ -312,45 +312,56 @@ class RaydiumSwap {
 	 * @param {number} rawAmountIn - The raw amount of the input token.
 	 * @param {boolean} swapInDirection - The direction of the swap (true for in, false for out).
 	 * @param slippage
+	 * @param {number=} retry
 	 * @returns {Promise<Object>} The swap calculation result.
 	 */
-	private static async calcAmountOut(poolKeys: LiquidityPoolKeys, rawAmountIn: number, swapInDirection: boolean, slippage: number) {
-		const poolInfo = await Liquidity.fetchInfo({connection: CONNECTION, poolKeys})
+	private static async calcAmountOut(poolKeys: LiquidityPoolKeys, rawAmountIn: number, swapInDirection: boolean, slippage: number, retry = 0): Promise<any> {
+		try {
+			const poolInfo = await Liquidity.fetchInfo({connection: CONNECTION, poolKeys})
 
-		let currencyInMint = poolKeys.baseMint
-		let currencyInDecimals = poolInfo.baseDecimals
-		let currencyOutMint = poolKeys.quoteMint
-		let currencyOutDecimals = poolInfo.quoteDecimals
+			let currencyInMint = poolKeys.baseMint
+			let currencyInDecimals = poolInfo.baseDecimals
+			let currencyOutMint = poolKeys.quoteMint
+			let currencyOutDecimals = poolInfo.quoteDecimals
 
-		if (!swapInDirection) {
-			currencyInMint = poolKeys.quoteMint
-			currencyInDecimals = poolInfo.quoteDecimals
-			currencyOutMint = poolKeys.baseMint
-			currencyOutDecimals = poolInfo.baseDecimals
-		}
+			if (!swapInDirection) {
+				currencyInMint = poolKeys.quoteMint
+				currencyInDecimals = poolInfo.quoteDecimals
+				currencyOutMint = poolKeys.baseMint
+				currencyOutDecimals = poolInfo.baseDecimals
+			}
 
-		const currencyIn = new Token(TOKEN_PROGRAM_ID, currencyInMint, currencyInDecimals)
-		const amountIn = new TokenAmount(currencyIn, rawAmountIn, false)
-		const currencyOut = new Token(TOKEN_PROGRAM_ID, currencyOutMint, currencyOutDecimals)
+			const currencyIn = new Token(TOKEN_PROGRAM_ID, currencyInMint, currencyInDecimals)
+			const amountIn = new TokenAmount(currencyIn, rawAmountIn, false)
+			const currencyOut = new Token(TOKEN_PROGRAM_ID, currencyOutMint, currencyOutDecimals)
 
-		const slippageP = new Percent(slippage, 100) // N% slippage
+			const slippageP = new Percent(slippage, 100) // N% slippage
 
-		const {amountOut, minAmountOut, currentPrice, executionPrice, priceImpact, fee} = Liquidity.computeAmountOut({
-			poolKeys,
-			poolInfo,
-			amountIn,
-			currencyOut,
-			slippage: slippageP,
-		})
+			const {amountOut, minAmountOut, currentPrice, executionPrice, priceImpact, fee} = Liquidity.computeAmountOut({
+				poolKeys,
+				poolInfo,
+				amountIn,
+				currencyOut,
+				slippage: slippageP,
+			})
 
-		return {
-			amountIn,
-			amountOut,
-			minAmountOut,
-			currentPrice,
-			executionPrice,
-			priceImpact,
-			fee,
+			return {
+				amountIn,
+				amountOut,
+				minAmountOut,
+				currentPrice,
+				executionPrice,
+				priceImpact,
+				fee
+			}
+		} catch (error) {
+			if (retry >= 3) {
+				throw error;
+			}
+
+			Sentry.captureException({message: 'Failed to calculate amount out', error});
+
+			return await this.calcAmountOut(poolKeys, rawAmountIn, swapInDirection, slippage, retry + 1)
 		}
 	}
 

@@ -14,5 +14,5 @@ export const warmUpEndpoint =  async (endpoint: string) => {
 			console.log(e)
 		}
 
-	}, 2500)
+	}, 2000)
 }

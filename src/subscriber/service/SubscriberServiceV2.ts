@@ -160,7 +160,7 @@ export class SubscriberServiceV2 {
 
 	}
 
-	private static async initiateSellTransaction(token: Token, retries = 3) {
+	private static async initiateSellTransaction(token: Token, retries = 5) {
 		const defaultSolBalances = {
 			preBalance: 0,
 			postBalance: 0
@@ -171,9 +171,10 @@ export class SubscriberServiceV2 {
 
 			sendMessageToGroup(token, txId, true)
 
-			await sleep(45000);
+			await sleep(15000);
 
 			const [txStatus, balances] = txId ? await RaydiumSwap.checkTransactionStatus(txId) : [false, defaultSolBalances];
+			const tokensAmount = await RaydiumSwap.getTokensAmountInWallet(token.tokenAddress);
 
 			if (txStatus) {
 				const receivedAmount  = balances?.postBalance - balances?.preBalance;
@@ -183,6 +184,14 @@ export class SubscriberServiceV2 {
 				await this.updateRealRoeInFinishedCollection(token, realRoe)
 
 				return;
+			}
+
+			if (!tokensAmount) {
+				console.log('Not found token in wallet', token.tokenAddress);
+
+				await this.updateRealRoeInFinishedCollection(token, 0)
+
+				return
 			}
 		}
 

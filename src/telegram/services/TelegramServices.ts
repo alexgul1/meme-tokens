@@ -1,4 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
+import RaydiumSwap from '../../swap/service/RaydiumSwap';
 
 export type MessageParams = {
 	token: string;
@@ -9,6 +10,20 @@ export type MessageParams = {
 	chartLink: string;
 	isEdited: boolean
 }
+
+function formatTokenListForTelegram(tokens: Array<{ mintAddress: string, amount: number, sumInSol: number }>): string {
+	return tokens
+		.map(token =>
+			`<b>🪙 Token:</b>
+Mint Address: <code>${token.mintAddress}</code>
+Balance: ${token.amount}
+Value in SOL: ${token.sumInSol}
+
+`
+		)
+		.join('');
+}
+
 
 export class TelegramBotService {
 	private static bot: TelegramBot;
@@ -54,6 +69,7 @@ export class TelegramBotService {
 	static initialize(): void {
 		if (!this.bot) {
 			this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, {polling: true});
+			this.bot.onText(/\/my_wallet_tokens/, this.getMyTokensOnRequest.bind(this) )
 			console.log('TG bot initialized')
 		}
 	}
@@ -101,6 +117,23 @@ export class TelegramBotService {
 			console.info(`Сообщение отправлено в чат: ${this.groupID}`);
 		} catch (error) {
 			console.error('Ошибка при отправке сообщения: ', error);
+		}
+	}
+
+	private static async getMyTokensOnRequest(msg: TelegramBot.Message): Promise<void> {
+		const tokensInWallet =  await RaydiumSwap.getNonZeroTokenBalances();
+
+		if (!tokensInWallet.length) {
+			await this.bot.sendMessage(this.groupID, 'No tokens find', {
+				message_thread_id: msg.message_thread_id
+			});
+		} else {
+			const formattedTokens = formatTokenListForTelegram(tokensInWallet)
+
+			await this.bot.sendMessage(this.groupID, formattedTokens, {
+				message_thread_id: msg.message_thread_id,
+				parse_mode: 'HTML'
+			});
 		}
 	}
 

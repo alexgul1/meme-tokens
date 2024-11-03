@@ -101,7 +101,7 @@ export class SolanaService {
 		}
 	}
 
-	private static async fetchAndParseTokenPrice(poolState: LiquidityStateV4): Promise<number | undefined> {
+	public static async fetchAndParseTokenPrice(poolState: LiquidityStateV4): Promise<number | undefined> {
 		try {
 			const baseTokenAmount = await CONNECTION.getTokenAccountBalance(poolState.baseVault);
 			const quoteTokenAmount = await CONNECTION.getTokenAccountBalance(poolState.quoteVault);

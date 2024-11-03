@@ -11,7 +11,7 @@ import {
 	ApiPoolInfoV4, jsonInfo2PoolKeys,
 	Liquidity,
 	LIQUIDITY_STATE_LAYOUT_V4,
-	LiquidityPoolKeys,
+	LiquidityPoolKeys, LiquidityStateV4,
 	Market,
 	MARKET_STATE_LAYOUT_V3,
 	Percent, Price,
@@ -27,6 +27,7 @@ import bs58 from 'bs58'
 import * as Sentry from '@sentry/node';
 import {CONNECTION, STAKED_CONNECTION} from '../../index';
 import {Cache, CacheClass} from 'memory-cache';
+import {SolanaService} from '../../solana/services/SolanaService';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 
@@ -196,6 +197,36 @@ class RaydiumSwap {
 		}))
 	}
 
+	public static async getNonZeroTokenBalances(): Promise<Array<any>> {
+		console.log(this.wallet.publicKey)
+		const walletTokenAccounts = await CONNECTION.getTokenAccountsByOwner(this.wallet.publicKey, {
+			programId: TOKEN_PROGRAM_ID,
+		});
+
+		return Promise.all(walletTokenAccounts.value
+			.map((i) => {
+				const bufferedAccountData = i.account.data as Buffer;
+				const accountInfo = SPL_ACCOUNT_LAYOUT.decode(bufferedAccountData)
+
+				const mintAddress = new PublicKey(accountInfo.mint).toString();
+				const amount = Number(accountInfo.amount);
+
+				return { mintAddress, amount, bufferedAccountData };
+			})
+			.filter(({amount}) => amount > 0)
+			.map(async ({amount, mintAddress, bufferedAccountData}) => {
+				const mintInfo = await CONNECTION.getParsedAccountInfo(new PublicKey(mintAddress));
+				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(bufferedAccountData);
+
+
+				const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals ?? 0;
+				const parsedAmount = amount / (10 ** decimals);
+				const price = await SolanaService.fetchAndParseTokenPrice(poolState) || 0;
+
+				return { mintAddress, amount: parsedAmount, sumInSol: price * parsedAmount};
+			}));
+	}
+
 	public static async getTokensAmountInWallet(token: string): Promise<number> {
 		const walletTokenAccount = await CONNECTION.getTokenAccountsByOwner(this.wallet.publicKey, {
 			mint: new PublicKey(token)
@@ -337,7 +368,14 @@ class RaydiumSwap {
 
 			const slippageP = new Percent(slippage, 100) // N% slippage
 
-			const {amountOut, minAmountOut, currentPrice, executionPrice, priceImpact, fee} = Liquidity.computeAmountOut({
+			const {
+				amountOut,
+				minAmountOut,
+				currentPrice,
+				executionPrice,
+				priceImpact,
+				fee
+			} = Liquidity.computeAmountOut({
 				poolKeys,
 				poolInfo,
 				amountIn,

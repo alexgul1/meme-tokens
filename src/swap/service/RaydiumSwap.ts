@@ -11,7 +11,7 @@ import {
 	ApiPoolInfoV4, jsonInfo2PoolKeys,
 	Liquidity,
 	LIQUIDITY_STATE_LAYOUT_V4,
-	LiquidityPoolKeys, LiquidityStateV4,
+	LiquidityPoolKeys,
 	Market,
 	MARKET_STATE_LAYOUT_V3,
 	Percent, Price,
@@ -27,7 +27,6 @@ import bs58 from 'bs58'
 import * as Sentry from '@sentry/node';
 import {CONNECTION, STAKED_CONNECTION} from '../../index';
 import {Cache, CacheClass} from 'memory-cache';
-import {SolanaService} from '../../solana/services/SolanaService';
 
 export const sleep = (waitTimeInMs: number) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
 

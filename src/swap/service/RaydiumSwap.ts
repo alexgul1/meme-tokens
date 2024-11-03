@@ -213,19 +213,14 @@ class RaydiumSwap {
 				return { mintAddress, amount, bufferedAccountData };
 			})
 			.filter(({amount, mintAddress}) => amount > 0 && !mintAddress.includes('11111111111111111111111111111111')  )
-			.map(async ({amount, mintAddress, bufferedAccountData}) => {
-
-				console.log(amount, mintAddress)
+			.map(async ({amount, mintAddress}) => {
 
 				const mintInfo = await CONNECTION.getParsedAccountInfo(new PublicKey(mintAddress));
-				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(bufferedAccountData);
-
 
 				const decimals = (mintInfo.value?.data as any)?.parsed?.info?.decimals ?? 0;
 				const parsedAmount = amount / (10 ** decimals);
-				const price = await SolanaService.fetchAndParseTokenPrice(poolState) || 0;
 
-				return { mintAddress, amount: parsedAmount, sumInSol: price * parsedAmount};
+				return { mintAddress, amount: parsedAmount };
 			}));
 	}
 

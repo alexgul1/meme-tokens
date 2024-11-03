@@ -11,13 +11,12 @@ export type MessageParams = {
 	isEdited: boolean
 }
 
-function formatTokenListForTelegram(tokens: Array<{ mintAddress: string, amount: number, sumInSol: number }>): string {
+function formatTokenListForTelegram(tokens: Array<{ mintAddress: string, amount: number }>): string {
 	return tokens
 		.map(token =>
 			`<b>🪙 Token:</b>
 Mint Address: <code>${token.mintAddress}</code>
 Balance: ${token.amount}
-Value in SOL: ${token.sumInSol}
 
 `
 		)

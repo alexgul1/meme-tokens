@@ -52,7 +52,7 @@ export class TelegramUserServiceV2 {
 		this.processedAddresses = new Set();
 
 
-		this.session = new StoreSession('my_session')
+		this.session = new StoreSession(`my_session_${this.apiId}`)
 		this.client = new TelegramClient(this.session, this.apiId, this.apiHash, {connectionRetries: 5})
 
 		this.channelsIdToNameMap = new Cache();

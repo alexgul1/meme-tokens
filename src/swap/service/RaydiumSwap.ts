@@ -214,6 +214,9 @@ class RaydiumSwap {
 			})
 			.filter(({amount, mintAddress}) => amount > 0 && !mintAddress.includes('11111111111111111111111111111111')  )
 			.map(async ({amount, mintAddress, bufferedAccountData}) => {
+
+				console.log(amount, mintAddress)
+
 				const mintInfo = await CONNECTION.getParsedAccountInfo(new PublicKey(mintAddress));
 				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(bufferedAccountData);
 

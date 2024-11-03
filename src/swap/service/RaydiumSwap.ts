@@ -198,7 +198,6 @@ class RaydiumSwap {
 	}
 
 	public static async getNonZeroTokenBalances(): Promise<Array<any>> {
-		console.log(this.wallet.publicKey)
 		const walletTokenAccounts = await CONNECTION.getTokenAccountsByOwner(this.wallet.publicKey, {
 			programId: TOKEN_PROGRAM_ID,
 		});
@@ -213,7 +212,7 @@ class RaydiumSwap {
 
 				return { mintAddress, amount, bufferedAccountData };
 			})
-			.filter(({amount}) => amount > 0)
+			.filter(({amount, mintAddress}) => amount > 0 && !mintAddress.includes('11111111111111111111111111111111')  )
 			.map(async ({amount, mintAddress, bufferedAccountData}) => {
 				const mintInfo = await CONNECTION.getParsedAccountInfo(new PublicKey(mintAddress));
 				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(bufferedAccountData);

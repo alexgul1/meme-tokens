@@ -64,6 +64,10 @@ class RaydiumSwap {
 	private static FEE = Number(process.env.FEE) || 228000;
 	private static cache: CacheClass<string, ApiPoolInfoV4> = new Cache();
 
+	public static get walletAddress() {
+		return this.wallet.publicKey.toString();
+	}
+
 	public static async submitTransaction(pairAddress: string, tokenAddress: string, isSoldTransaction: boolean, attempts = 1): Promise<[string | undefined, number | null]> {
 		let localAttempt = 0;
 

@@ -95,6 +95,10 @@ export class SubscriberServiceV2 {
 				}
 
 				if (!newTokenPrice) {
+					if (!SHOULD_SWAP) {
+						await sleep(5000)
+					}
+
 					newTokenPrice = await SolanaService.getTokenPrice(tokenInfoFromDB.address) as number
 				}
 

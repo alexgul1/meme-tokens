@@ -7,7 +7,6 @@ import {NewMessage, NewMessageEvent,} from 'telegram/events';
 import PeerChannel = Api.PeerChannel;
 import {extractSolAddress} from '../utils/addressExtractor';
 
-import { EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 import {resolve} from 'path';
 import  {Cache, CacheClass} from 'memory-cache';
@@ -31,12 +30,16 @@ export class TelegramUserServiceV2 {
 	private readonly bannedChatIds: Set<string>;
 	private readonly processedAddresses: Set<string>;
 	private readonly channelsIdToNameMap: CacheClass<long, string>
+	private readonly forwardChatId: string;
+	private readonly forwardTopicId: number;
 
 	constructor() {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
 		this.apiHash = process.env.TELEGRAM_API_HASH as string;
 		this.chatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST as string).split(','))
 		this.bannedChatIds = new Set((process.env.TELEGRAM_BANNED_CHANNELS_LIST || '').split(','))
+		this.forwardChatId = '-1002426306186';
+		this.forwardTopicId = 3558
 
 		if (!this.apiId || !this.apiId) {
 			throw new Error('Environment variables TELEGRAM_API_ID and TELEGRAM_API_HASH must be set');
@@ -65,6 +68,7 @@ export class TelegramUserServiceV2 {
 			phoneCode: async () => await input.text('Code ?'),
 			onError: (err) => console.log(err),
 		})
+
 	}
 
 	private async handleUpdates() {
@@ -111,68 +115,18 @@ export class TelegramUserServiceV2 {
 			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 				channelId,
 				messageLink: `https://t.me/${username}/${messageId}`,
-				isEdited: false
-			});
+				isEdited: false,
+			},
+			message,
+			channelId === '2212795949'
+			);
 
 			this.processedAddresses.delete(extractedData);
 		}
 	}
 
-	public async editedMessageHandle(event: EditedMessageEvent) {
-		const message = event.message;
-		const peerChannel = (message?.peerId as PeerChannel);
-
-		if (!peerChannel) {
-			return;
-		}
-
-		const channelId = peerChannel.channelId?.toString() || '';
-
-		const isChatAllowed = this.chatIds.has(channelId) && !this.bannedChatIds.has(channelId);
-
-		SubscriberServiceV2.putIntoDBInfoMessage(isChatAllowed, !!extractSolAddress(message.message))
-
-		if (isChatAllowed) {
-			const editDateTimestamp = message.editDate;
-			const originalDateTimestamp = message.date;
-
-			if (!editDateTimestamp || !originalDateTimestamp) {
-				return; // Ensure both dates are present
-			}
-
-			// Convert timestamps to Date objects
-			const editDate = new Date(editDateTimestamp * 1000);
-			const originalDate = new Date(originalDateTimestamp * 1000);
-
-			// Calculate the difference in milliseconds
-			const timeDifferenceInMilliseconds = editDate.getTime() - originalDate.getTime();
-
-			// Check if the difference is less than 8 seconds (8888 milliseconds)
-			if (timeDifferenceInMilliseconds < 8888) {
-				const extractedData = extractSolAddress(message.message);
-
-				if (!extractedData) {
-					return;
-				}
-
-				if (this.processedAddresses.has(extractedData)) {
-					console.log('Now we processed this address', extractedData)
-					return;
-				}
-
-				const messageId = message.id;
-				const username = await this.getUsername(peerChannel);
-
-				// Handle based on whether it's a token or pair address
-				await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
-					channelId,
-					messageLink: `https://t.me/${username}/${messageId}`,
-					isEdited: true
-				});
-
-				this.processedAddresses.delete(extractedData);
-			}
-		}
+	public async forwardMessage(message: Api.Message) {
+		await this.client.sendMessage(this.forwardChatId, {message: message, replyTo: this.forwardTopicId})
 	}
 
 	private async getUsername(peerChannel: PeerChannel): Promise<string> {

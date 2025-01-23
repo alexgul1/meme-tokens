@@ -9,9 +9,10 @@ import {
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
-import {SHOULD_SWAP} from '../../index';
+import {SHOULD_SWAP, telegramUserService} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
+import {Api} from 'telegram';
 
 const processingAddresses = new Set();
 
@@ -31,7 +32,13 @@ export class SubscriberServiceV2 {
 		this.subscribeToActiveFromDB();
 	}
 
-	public static async subscribeToTokenV2(tokenAddress: string, {channelId, messageLink, isEdited}: TelegramMessageInfo) {
+	public static async subscribeToTokenV2(tokenAddress: string, {
+		channelId,
+		messageLink,
+		isEdited
+	}: TelegramMessageInfo,
+	message: Api.Message,
+	shouldForward: boolean) {
 		console.time('Get token info from dex')
 
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
@@ -80,7 +87,7 @@ export class SubscriberServiceV2 {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink, isEdited});
 
 			if (tokenInfoFromDB) {
-				let newTokenPrice: number| null = null;
+				let newTokenPrice: number | null = null;
 
 				if (SHOULD_SWAP) {
 					console.time('Buy token')
@@ -106,6 +113,10 @@ export class SubscriberServiceV2 {
 				tokenInfoFromDB.currentPrice = newTokenPrice
 
 				await this.putNewTokenToDB(tokenInfoFromDB)
+
+				if (shouldForward) {
+					await telegramUserService.forwardMessage(message)
+				}
 			}
 		}
 
@@ -218,7 +229,6 @@ export class SubscriberServiceV2 {
 			status: 'InProgress',
 		}
 	}
-
 
 	public static async putIntoDBInfoMessage(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
 		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)

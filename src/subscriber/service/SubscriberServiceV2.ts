@@ -140,7 +140,7 @@ export class SubscriberServiceV2 {
 		const roe = ((price - token.initialPrice) / token.initialPrice) * 100
 
 		const shouldBeFinished = roe > this.maxPositiveROE || roe < this.maxNegativeROE
-			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 20);
+			|| isCurrentDateGreaterThanStartDate(new Date(token.startDate), 30);
 
 		this.updateTokenPriceInDB(token, price, roe, shouldBeFinished)
 

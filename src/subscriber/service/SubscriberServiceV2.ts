@@ -123,7 +123,7 @@ export class SubscriberServiceV2 {
 		processingAddresses.delete(tokenInfo.pairAddress)
 
 		if (tokenInfoFromDB) {
-			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
+			// SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
 			// this.getCallToChannel(tokenInfoFromDB, tokenInfo.baseToken.name)
 		}
 	}
@@ -132,9 +132,9 @@ export class SubscriberServiceV2 {
 		const activeSubsInDB = await this.mongoDBInstance.getEntitiesByValue('status', 'InProgress')
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
-		activeSubsInDB.forEach((token) => {
-			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
-		})
+		// activeSubsInDB.forEach((token) => {
+		// 	// SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
+		// })
 	}
 
 	public static async putNewTokenToDB(data: Token) {

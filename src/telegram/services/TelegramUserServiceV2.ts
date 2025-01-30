@@ -126,7 +126,7 @@ export class TelegramUserServiceV2 {
 	}
 
 	public async forwardMessage(message: Api.Message, tokenMentions: string): Promise<void> {
-		message.message = `${tokenMentions}\n\n${message.message}`;
+		message.message += `\n\n${tokenMentions}`;
 
 		console.log(message.message)
 

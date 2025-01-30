@@ -8,11 +8,13 @@ type TwitterMention = {
 }
 
 export class TwitterService {
-	private static BEARER_TOKEN = 'AAAAAAAAAAAAAAAAAAAAAMKYvAEAAAAAevDHK6y4OaDZqrzOPFRhP9qw0Js%3DpcNliJIthgh7tvFRMqXER34AI9HsBpAX1KfPk5BICwH0a8qJbv'; // Your Twitter API Bearer Token
+	private static BEARER_TOKEN = 'AAAAAAAAAAAAAAAAAAAAAMKYvAEAAAAAIdUNCR4Qa1lAS8ZQRzA0Mn4OM0o%3D5UnNGCI1zl3aQsIyrEFhwPGIoHmNJFdyVdezfigLZWBs4p251m'; // Your Twitter API Bearer Token
 
 	// Helper function to get tweet counts from Twitter API
 	private static async getTweetCounts(query: string): Promise<{ data: TwitterMention[] }> {
 		const url = `https://api.twitter.com/2/tweets/counts/recent?query=${encodeURIComponent(query)}`;
+
+		console.log('url', url);
 
 		const response = await axios.get(url, {
 			headers: {
@@ -70,7 +72,7 @@ export class TwitterService {
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 			// @ts-ignore
-			console.error('Error fetching tweet counts:', error?.status);
+			console.error('Error fetching tweet counts:', error);
 			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 			// @ts-ignore
 			return `Error fetching mentions count. Error code: ${error?.status || 'Unknown error'}`;

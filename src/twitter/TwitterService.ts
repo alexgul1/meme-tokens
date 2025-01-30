@@ -12,7 +12,7 @@ export class TwitterService {
 
 	// Helper function to get tweet counts from Twitter API
 	private static async getTweetCounts(query: string): Promise<{ data: TwitterMention[] }> {
-		const url = `https://api.x.com/2/tweets/counts/recent?query=${query}&granularity=hour`;
+		const url = `https://api.x.com/2/tweets/counts/recent?query=${encodeURIComponent(query)}&granularity=hour`;
 
 		console.log('url', url);
 
@@ -29,7 +29,7 @@ export class TwitterService {
 
 	// Function to get token mentions in the last 3 hours
 	public static async getTokenMentions(tokenAddress: string): Promise<string> {
-		const query = `${tokenAddress} -filter:retweets is:verified`; // Query to filter out retweets and only include verified users
+		const query = `(${tokenAddress} -is:retweet is:verified)`; // Query to filter out retweets and only include verified users
 
 
 		try {

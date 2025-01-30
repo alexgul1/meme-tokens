@@ -125,7 +125,11 @@ export class TelegramUserServiceV2 {
 		}
 	}
 
-	public async forwardMessage(message: Api.Message) {
+	public async forwardMessage(message: Api.Message, tokenMentions: string): Promise<void> {
+		message.message = `${tokenMentions}\n${message.message}`;
+
+		console.log(message.message)
+
 		await this.client.sendMessage(this.forwardChatId, {message: message, replyTo: this.forwardTopicId})
 	}
 

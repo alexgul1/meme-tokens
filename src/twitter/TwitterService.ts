@@ -12,7 +12,7 @@ export class TwitterService {
 
 	// Helper function to get tweet counts from Twitter API
 	private static async getTweetCounts(query: string): Promise<{ data: TwitterMention[] }> {
-		const url = `https://api.twitter.com/2/tweets/counts/recent?query=${encodeURIComponent(query)}`;
+		const url = `https://api.x.com/2/tweets/counts/recent?query=${query}&granularity=hour`;
 
 		console.log('url', url);
 
@@ -72,7 +72,7 @@ export class TwitterService {
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 			// @ts-ignore
-			console.error('Error fetching tweet counts:', error);
+			console.error('Error fetching tweet counts:', JSON.stringify(error));
 			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 			// @ts-ignore
 			return `Error fetching mentions count. Error code: ${error?.status || 'Unknown error'}`;

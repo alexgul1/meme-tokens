@@ -72,7 +72,7 @@ export class TwitterService {
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 			// @ts-ignore
-			console.error('Error fetching tweet counts:', JSON.stringify(error));
+			console.error('Error fetching tweet counts:', JSON.stringify(error.response.data));
 			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 			// @ts-ignore
 			return `Error fetching mentions count. Error code: ${error?.status || 'Unknown error'}`;

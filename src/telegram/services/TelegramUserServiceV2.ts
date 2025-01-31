@@ -145,7 +145,7 @@ ${tokenMentions}
 
 ${posts}`;
 
-		await this.client.sendMessage(this.forwardChatId, {message: message, replyTo: this.alertTopicId, parseMode: 'HTML'})
+		await this.client.sendMessage(this.forwardChatId, {message: message, replyTo: this.alertTopicId, parseMode: 'html'})
 	}
 
 	private async getUsername(peerChannel: PeerChannel): Promise<string> {

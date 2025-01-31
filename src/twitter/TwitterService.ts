@@ -14,8 +14,8 @@ export class TwitterService {
 	 * Формирует поисковый запрос, используя и CA, и Pump.fun ссылку.
 	 */
 	private static buildQuery(ca: string): string {
-		const pumpFunUrl = `https://pump.fun/coin/${ca}`;
-		return `(${ca} OR "${pumpFunUrl}" -is:retweet is:verified)`;
+		// Query to filter out retweets and only include verified users
+		return `(${ca} -is:retweet is:verified)`;
 	}
 
 	// Helper function to get tweet counts from Twitter API

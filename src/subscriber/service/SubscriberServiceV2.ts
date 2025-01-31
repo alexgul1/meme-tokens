@@ -78,9 +78,15 @@ export class SubscriberServiceV2 {
 				await this.putNewTokenToDB(tokenInfoFromDB)
 
 				if (shouldForward) {
-					const tokenMentions = await TwitterService.getTokenMentions(tokenInfoFromDB.tokenAddress);
+					const {result, tweetCount} = await TwitterService.getTokenMentions(tokenInfoFromDB.tokenAddress);
 
-					await telegramUserService.forwardMessage(message, tokenMentions)
+					await telegramUserService.forwardMessage(message, result)
+
+					if (tweetCount > 10) {
+						const postsTemplate = await TwitterService.getRecentTweets(tokenInfoFromDB.tokenAddress);
+
+						await telegramUserService.sendAlertMentions(tokenInfoFromDB, result, postsTemplate);
+					}
 				}
 			}
 		}

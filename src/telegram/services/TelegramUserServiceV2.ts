@@ -11,6 +11,7 @@ import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2'
 import {resolve} from 'path';
 import  {Cache, CacheClass} from 'memory-cache';
 import long = Api.long;
+import {Token} from '../../mongo/types/Token';
 
 export type TelegramMessageInfo = {
 	channelId: string,
@@ -32,6 +33,7 @@ export class TelegramUserServiceV2 {
 	private readonly channelsIdToNameMap: CacheClass<long, string>
 	private readonly forwardChatId: string;
 	private readonly forwardTopicId: number;
+	private readonly alertTopicId: number;
 
 	constructor() {
 		this.apiId = parseInt(process.env.TELEGRAM_API_ID as string, 10);
@@ -39,7 +41,8 @@ export class TelegramUserServiceV2 {
 		this.chatIds = new Set((process.env.TELEGRAM_CHANNELS_LIST as string).split(','))
 		this.bannedChatIds = new Set((process.env.TELEGRAM_BANNED_CHANNELS_LIST || '').split(','))
 		this.forwardChatId = '-1002426306186';
-		this.forwardTopicId = 3558
+		this.forwardTopicId = 3558;
+		this.alertTopicId = 8873;
 
 		if (!this.apiId || !this.apiId) {
 			throw new Error('Environment variables TELEGRAM_API_ID and TELEGRAM_API_HASH must be set');
@@ -131,6 +134,18 @@ export class TelegramUserServiceV2 {
 		console.log(message.message)
 
 		await this.client.sendMessage(this.forwardChatId, {message: message, replyTo: this.forwardTopicId})
+	}
+
+	public async sendAlertMentions(token: Token, tokenMentions: string, posts: string): Promise<void> {
+		const message = `
+<code>${token.tokenAddress}</code>
+<a href="https://dexscreener.com/solana/${token.tokenAddress}">${token.name}</a>
+		
+${tokenMentions}
+
+${posts}`;
+
+		await this.client.sendMessage(this.forwardChatId, {message: message, replyTo: this.alertTopicId, parseMode: 'HTML'})
 	}
 
 	private async getUsername(peerChannel: PeerChannel): Promise<string> {

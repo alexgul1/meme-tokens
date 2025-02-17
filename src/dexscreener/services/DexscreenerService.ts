@@ -5,7 +5,7 @@ import {ITokenPairs} from './ITokenPairs';
 import {IPair} from './IPair';
 
 export class DexscreenerService {
-	private static BSCAddress = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+	private static ETHAddress = '0x4200000000000000000000000000000000000006';
 	private static addressToPairsCache: CacheClass<string, ITokenPairs> = new Cache()
 
 	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs|null> {
@@ -72,7 +72,7 @@ export class DexscreenerService {
 			return
 		}
 
-		return tokenPairs.pairs.find((pair)=> this.isTokenBSCPairOnPancakeSwap(pair))
+		return tokenPairs.pairs.find((pair)=> this.isTokenBasePairSwap(pair))
 	}
 
 	static async getTokenByPair(pairAddress: string):Promise<unknown>{
@@ -82,12 +82,12 @@ export class DexscreenerService {
 			return
 		}
 
-		return pairs.pairs.find((pair)=> this.isTokenBSCPairOnPancakeSwap(pair))
+		return pairs.pairs.find((pair)=> this.isTokenBasePairSwap(pair))
 	}
 
-	private static isTokenBSCPairOnPancakeSwap(pair: IPair) {
-		return pair.chainId === 'bsc' && pair.dexId === 'pancakeswap' &&
-			(pair.baseToken.address === this.BSCAddress || pair.quoteToken.address === this.BSCAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000)
+	private static isTokenBasePairSwap(pair: IPair) {
+		return pair.chainId === 'base' && (pair.dexId === 'uniswap' || pair.dexId === 'aerodrome') &&
+			(pair.baseToken.address === this.ETHAddress || pair.quoteToken.address === this.ETHAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000)
 	}
 
 	static async getTokenFromSearch(address: string):Promise<IPair|undefined>{
@@ -97,6 +97,6 @@ export class DexscreenerService {
 			return
 		}
 
-		return pairs.pairs.find((pair)=> this.isTokenBSCPairOnPancakeSwap(pair))
+		return pairs.pairs.find((pair)=> this.isTokenBasePairSwap(pair))
 	}
 }

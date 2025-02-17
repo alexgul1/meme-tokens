@@ -11,7 +11,7 @@ import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP, telegramUserService} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
-import {BSCService} from '../../evm/services/BSCService';
+import {BaseService} from '../../evm/services/BaseService';
 
 const processingAddresses = new Set();
 
@@ -25,9 +25,9 @@ export class SubscriberServiceV2 {
 		this.maxPositiveROE = parseFloat(process.env.MAX_POSITIVE_ROE as string) || 15
 		this.maxNegativeROE = (parseFloat(process.env.MAX_NEGATIVE_ROE as string) || 10) * -1;
 
-		const BSC_RPC_URL = process.env.BSC_RPC_URL!;
+		const BASE_RPC_URL = process.env.BASE_RPC_URL!;
 
-		BSCService.initialize(BSC_RPC_URL);
+		BaseService.initialize(BASE_RPC_URL);
 
 		this.mongoDBInstance = new MongoService(2);
 		await this.mongoDBInstance.connect();
@@ -103,7 +103,7 @@ export class SubscriberServiceV2 {
 						await sleep(5000)
 					}
 
-					newTokenPrice = await BSCService.getTokenPrice(tokenInfoFromDB.address) as number
+					newTokenPrice = await BaseService.getTokenPrice(tokenInfoFromDB.address) as number
 				}
 
 				tokenInfoFromDB.initialPrice = newTokenPrice;
@@ -116,7 +116,7 @@ export class SubscriberServiceV2 {
 		processingAddresses.delete(tokenInfo.pairAddress)
 
 		if (tokenInfoFromDB) {
-			BSCService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
+			BaseService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
 			// this.getCallToChannel(tokenInfoFromDB, tokenInfo.baseToken.name)
 		}
 	}
@@ -126,7 +126,7 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', activeSubsInDB)
 
 		activeSubsInDB.forEach((token) => {
-			BSCService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
+			BaseService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
 		})
 	}
 
@@ -192,17 +192,17 @@ export class SubscriberServiceV2 {
 		})
 
 		if (shouldBeFinished) {
-			await BSCService.unsubscribeFromPriceUpdates(token.address)
+			await BaseService.unsubscribeFromPriceUpdates(token.address)
 			await this.mongoDBInstance.finishTokenSubscription('address', token.address)
 		}
 	}
 
 	private static async generateNewTokenData(tokenInfo: IPair, messageInfo: TelegramMessageInfo): Promise<Token | null> {
-		const price = await BSCService.getTokenPrice(tokenInfo.pairAddress);
+		const price = await BaseService.getTokenPrice(tokenInfo.pairAddress);
 
 		if (!price) {
-			Sentry.captureMessage(`SubscriberServiceV2: No price from BSCService for  ${tokenInfo.pairAddress}`);
-			console.log(`SubscriberServiceV2: No price from BSCService for ${tokenInfo.pairAddress}`)
+			Sentry.captureMessage(`SubscriberServiceV2: No price from BaseService for  ${tokenInfo.pairAddress}`);
+			console.log(`SubscriberServiceV2: No price from BaseService for ${tokenInfo.pairAddress}`)
 
 			return null
 		}

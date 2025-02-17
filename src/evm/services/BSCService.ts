@@ -48,6 +48,7 @@ export class BSCService {
 		if (this.callbacks.has(lowerCasePair)) {
 			this.callbacks.delete(lowerCasePair);
 			this.lastProcessedBlock.delete(lowerCasePair);
+			this.provider.off({ address: pairAddress })
 			console.log(`Unsubscribed from pair ${lowerCasePair}`);
 		} else {
 			console.log(`No active subscription found for pair ${lowerCasePair}`);

@@ -99,11 +99,17 @@ export class BSCService {
 			if (version === 'V2') {
 				const contract = new ethers.Contract(pairAddress, PANCAKESWAP_V2_PAIR_ABI, this.provider);
 				const [reserve0, reserve1] = await contract.getReserves();
-				return Number(reserve0) / Number(reserve1);
+
+				const price = Number(reserve0) / Number(reserve1);
+
+				return price > 1 ? 1 / price : price;
 			} else {
 				const contract = new ethers.Contract(pairAddress, PANCAKESWAP_V3_POOL_ABI, this.provider);
 				const { sqrtPriceX96 } = await contract.slot0();
-				return (Number(sqrtPriceX96) ** 2) / 2 ** 192;
+
+				const price = (Number(sqrtPriceX96) ** 2) / 2 ** 192
+
+				return price > 1 ? 1 / price : price;
 			}
 		} catch (err) {
 			console.error('❌ Error fetching price:', err);

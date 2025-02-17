@@ -109,51 +109,30 @@ export class BaseService {
 				const contract = new ethers.Contract(pairAddress, PANCAKESWAP_V2_PAIR_ABI, this.provider);
 				const [reserve0, reserve1] = await contract.getReserves();
 
-				// Определяем порядок токенов
-				const token0 = await contract.token0();
-				if (this.isBaseToken(token0)) {
-					return Number(reserve0) / Number(reserve1);
-				} else {
-					return Number(reserve1) / Number(reserve0);
-				}
+				const price = Number(reserve0) / Number(reserve1);
+
+				return price > 1 ? 1 / price : price;
 			} else if (version === 'V3') {
 				const contract = new ethers.Contract(pairAddress, [...PANCAKESWAP_V3_POOL_ABI, 'function token0() view returns (address)'], this.provider);
 				const { sqrtPriceX96 } = await contract.slot0();
-				const token0 = await contract.token0();
 
 				// Правильный расчет цены с учетом порядка токенов
 				const price = (Number(sqrtPriceX96) ** 2) / 2 ** 192;
-				if (this.isBaseToken(token0)) {
-					return 1 / price;
-				} else {
-					return price;
-				}
+
+				return price > 1 ? 1 / price : price;
 			} else if (version === 'AERODROME') {
 				const contract = new ethers.Contract(pairAddress, AERODROME_PAIR_ABI, this.provider);
 				const [reserve0, reserve1] = await contract.getReserves();
-				const token0 = await contract.token0();
 
-				// Аналогично, проверяем порядок токенов
-				if (this.isBaseToken(token0)) {
-					return Number(reserve0) / Number(reserve1);
-				} else {
-					return Number(reserve1) / Number(reserve0);
-				}
+				const price =  Number(reserve0) / Number(reserve1);
+
+				return price > 1 ? 1 / price : price;
 			}
 			else return undefined;
 		} catch (err) {
 			console.error('❌ Error fetching price:', err);
 			return undefined;
 		}
-	}
-
-	private static isBaseToken(tokenAddress: string): boolean {
-		// Тут можно добавить список "базовых" токенов, например USDC, ETH, WETH и т.д.
-		const baseTokens = new Set([
-			'0x4200000000000000000000000000000000000006', // WETH на Base
-			'0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', // USDC на BSC
-		]);
-		return baseTokens.has(tokenAddress.toLowerCase());
 	}
 
 	private static async getInitialPoolState(pairAddress: string): Promise<void> {

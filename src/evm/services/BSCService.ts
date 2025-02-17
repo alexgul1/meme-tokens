@@ -99,7 +99,7 @@ export class BSCService {
 			if (version === 'V2') {
 				const contract = new ethers.Contract(pairAddress, PANCAKESWAP_V2_PAIR_ABI, this.provider);
 				const [reserve0, reserve1] = await contract.getReserves();
-				return Number(reserve1) / Number(reserve0);
+				return Number(reserve0) / Number(reserve1);
 			} else {
 				const contract = new ethers.Contract(pairAddress, PANCAKESWAP_V3_POOL_ABI, this.provider);
 				const { sqrtPriceX96 } = await contract.slot0();

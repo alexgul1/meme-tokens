@@ -64,6 +64,7 @@
     "bs58": "^6.0.0",
     "copyfiles": "^2.4.1",
     "dotenv": "^16.4.5",
+    "ethers": "^6.13.5",
     "input": "^1.0.1",
     "memory-cache": "^0.2.0",
     "mongodb": "^6.8.0",

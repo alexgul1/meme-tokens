@@ -5,7 +5,7 @@ import {ITokenPairs} from './ITokenPairs';
 import {IPair} from './IPair';
 
 export class DexscreenerService {
-	private static SOLAddress = 'So11111111111111111111111111111111111111112';
+	private static BSCAddress = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 	private static addressToPairsCache: CacheClass<string, ITokenPairs> = new Cache()
 
 	static async getTokenInfo(pairAddress: string): Promise<ITokenPairs|null> {
@@ -72,7 +72,7 @@ export class DexscreenerService {
 			return
 		}
 
-		return tokenPairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
+		return tokenPairs.pairs.find((pair)=> this.isTokenBSCPairOnPancakeSwap(pair))
 	}
 
 	static async getTokenByPair(pairAddress: string):Promise<unknown>{
@@ -82,14 +82,13 @@ export class DexscreenerService {
 			return
 		}
 
-		return pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
+		return pairs.pairs.find((pair)=> this.isTokenBSCPairOnPancakeSwap(pair))
 	}
 
-	private static isTokenSolPairOnRaydium(pair: IPair) {
-		return pair.chainId === 'solana' && pair.dexId === 'raydium' &&
-			(pair.baseToken.address === this.SOLAddress || pair.quoteToken.address === this.SOLAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000)
+	private static isTokenBSCPairOnPancakeSwap(pair: IPair) {
+		return pair.chainId === 'bsc' && pair.dexId === 'pancakeswap' &&
+			(pair.baseToken.address === this.BSCAddress || pair.quoteToken.address === this.BSCAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000)
 	}
-
 
 	static async getTokenFromSearch(address: string):Promise<IPair|undefined>{
 		const pairs = await this.searchTokenByAddress(address)
@@ -98,6 +97,6 @@ export class DexscreenerService {
 			return
 		}
 
-		return pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
+		return pairs.pairs.find((pair)=> this.isTokenBSCPairOnPancakeSwap(pair))
 	}
 }

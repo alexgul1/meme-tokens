@@ -42,6 +42,8 @@ export class SubscriberServiceV2 {
 
 		console.timeEnd('Get token info from dex')
 
+		console.log(tokenAddress)
+
 		if (!tokenInfo) {
 			return
 		}

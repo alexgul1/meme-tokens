@@ -37,6 +37,7 @@ export class SubscriberServiceV2 {
 
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
 		const allTokenPairs =  await DexscreenerService.searchTokenByAddress(tokenAddress);
+		console.log(tokenAddress, allTokenPairs);
 
 		if (allTokenPairs) {
 			this.setParsedTokenInfoToDB(allTokenPairs, {channelId, messageLink, isEdited});

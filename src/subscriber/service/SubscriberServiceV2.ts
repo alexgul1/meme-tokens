@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 
 import {MongoService} from '../../mongo/services/MongoService';
-import {Token} from '../../mongo/types/Token';
+import {Token, TokenInfo} from '../../mongo/types/Token';
 import {IPair} from '../../dexscreener/services/IPair';
 import {DexscreenerService} from '../../dexscreener/services/DexscreenerService';
 import {
@@ -12,6 +12,7 @@ import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP, telegramUserService} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
+import {ITokenPairs} from '../../dexscreener/services/ITokenPairs';
 
 const processingAddresses = new Set();
 
@@ -35,6 +36,11 @@ export class SubscriberServiceV2 {
 		console.time('Get token info from dex')
 
 		const tokenInfo = await DexscreenerService.getTokenFromSearch(tokenAddress) as IPair;
+		const allTokenPairs =  await DexscreenerService.searchTokenByAddress(tokenAddress);
+
+		if (allTokenPairs) {
+			this.setParsedTokenInfoToDB(allTokenPairs, {channelId, messageLink, isEdited});
+		}
 
 		console.timeEnd('Get token info from dex')
 
@@ -234,6 +240,36 @@ export class SubscriberServiceV2 {
 
 		this.mongoDBInstance.addCallToDB(token)
 		telegramUserService.sendMessageToCallChannel(token.name, tokenName, token.address)
+	}
+
+	public static async setParsedTokenInfoToDB(tokenPairs: ITokenPairs, messageInfo: Partial<TelegramMessageInfo>): Promise<void> {
+		const firstPair = tokenPairs.pairs[0];
+
+		if (!firstPair) {
+			return;
+		}
+
+		const isPairExistInDB = await this.mongoDBInstance.getEntityFromTokensList({
+			'address': firstPair.pairAddress,
+			parsedLink: messageInfo.channelId,
+		});
+
+		if (isPairExistInDB) {
+			return;
+		}
+
+		const dbEntity = {
+			address: firstPair.pairAddress,
+			tokenAddress: firstPair.baseToken.address,
+			name: firstPair.baseToken.symbol,
+			startDate: new Date(),
+			parsedLink: messageInfo.channelId,
+			messageLink: messageInfo.messageLink,
+			isEdited: messageInfo.isEdited,
+			provider: `${firstPair.chainId}_${firstPair.dexId}`,
+		} as TokenInfo;
+
+		await this.mongoDBInstance.createEntityInTokensList(dbEntity);
 	}
 }
 

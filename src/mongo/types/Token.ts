@@ -15,3 +15,5 @@ export interface Token {
 	messageLink?: string;
 	isEdited?: boolean;
 }
+
+export type TokenInfo = Omit<Token, 'initialPrice' | 'currentPrice' | 'soldPrice' | 'lastUpdateDate'| 'endDate' | 'status' | 'roe'>;

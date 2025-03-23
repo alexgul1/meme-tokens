@@ -1,6 +1,6 @@
 import {MongoClient, Db, Collection, ConnectionOptions} from 'mongodb';
 import { IMongoService } from './IMongoService';
-import { Token } from '../types/Token';
+import {Token, TokenInfo} from '../types/Token';
 import dotenv from 'dotenv';
 import * as Sentry from '@sentry/node';
 
@@ -178,6 +178,23 @@ export class MongoService implements IMongoService<Token> {
 
 		await collection.insertOne(token);
 	}
+
+	public async getEntityFromTokensList(object: Record<string, unknown>): Promise<TokenInfo | null> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+		const collection: Collection<Token> = this.db.collection('parsed-tokens');
+		return await collection.findOne(object);
+	}
+
+	public async createEntityInTokensList(entity: TokenInfo): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+		const collection: Collection<TokenInfo> = this.db.collection('parsed-tokens');
+		await collection.insertOne(entity);
+	}
+
 
 	public async close(): Promise<void> {
 		if (MongoService.client) {

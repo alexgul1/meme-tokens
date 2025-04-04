@@ -10,3 +10,4 @@ node_modules/
 .env*
 my_session/
 yarn.lock
+my_session*/

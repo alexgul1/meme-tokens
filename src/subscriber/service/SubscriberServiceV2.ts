@@ -9,7 +9,7 @@ import {
 } from '../utils/isCurrentDateGreaterThanEndDate';
 import {SolanaService} from '../../solana/services/SolanaService';
 import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
-import {SHOULD_SWAP} from '../../index';
+import {SHOULD_SWAP, telegramUserService} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
 
@@ -84,36 +84,28 @@ export class SubscriberServiceV2 {
 			return;
 		}
 
-		console.time('Check token in current collection')
+		console.time('Check token in wallet')
 
-		let tokenInfoFromDB = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
+		const tokensAmount = await RaydiumSwap.getTokensAmountInWallet(tokenInfo.baseToken.address);
 
-		console.timeEnd('Check token in current collection')
+		console.timeEnd('Check token in wallet')
 
-		if (!tokenInfoFromDB) {
+		let tokenInfoFromDB;
+
+		if (tokensAmount < 1) {
 			tokenInfoFromDB = await this.generateNewTokenData(tokenInfo, {channelId, messageLink, isEdited});
 
 			if (tokenInfoFromDB) {
-				let newTokenPrice: number| null = null;
 
 				if (SHOULD_SWAP) {
 					console.time('Buy token')
 
-					const [trx, price] = await RaydiumSwap.submitTransaction(tokenInfoFromDB.address, tokenInfoFromDB.tokenAddress, false);
-
-					newTokenPrice = price
+					await telegramUserService.sendAddressToBot(tokenInfoFromDB.tokenAddress);
 
 					console.timeEnd('Buy token')
 
-					sendMessageToGroup(tokenInfoFromDB, trx, false)
+					sendMessageToGroup(tokenInfoFromDB, '', false)
 				}
-
-				if (!newTokenPrice) {
-					newTokenPrice = await SolanaService.getTokenPrice(tokenInfoFromDB.address) as number
-				}
-
-				tokenInfoFromDB.initialPrice = newTokenPrice;
-				tokenInfoFromDB.currentPrice = newTokenPrice
 
 				await this.putNewTokenToDB(tokenInfoFromDB)
 			}
@@ -121,19 +113,14 @@ export class SubscriberServiceV2 {
 
 		processingAddresses.delete(tokenInfo.pairAddress)
 
-		if (tokenInfoFromDB) {
-			SolanaService.subscribeToPriceUpdates(tokenInfoFromDB.address, (price) => this.handlePriceChange(tokenInfoFromDB!, price))
-			// this.getCallToChannel(tokenInfoFromDB, tokenInfo.baseToken.name)
+		if (tokensAmount >= 1) {
+			console.log(`Now we have this token in wallet ${tokenInfo.baseToken.address}`)
 		}
 	}
 
 	public static async subscribeToActiveFromDB() {
 		const activeSubsInDB = await this.mongoDBInstance.getEntitiesByValue('status', 'InProgress')
 		console.log('SubscriberServiceV2:', activeSubsInDB)
-
-		activeSubsInDB.forEach((token) => {
-			SolanaService.subscribeToPriceUpdates(token.address, (data) => this.handlePriceChange(token, data))
-		})
 	}
 
 	public static async putNewTokenToDB(data: Token) {
@@ -141,6 +128,8 @@ export class SubscriberServiceV2 {
 			await this.mongoDBInstance.createEntity({
 				...data,
 			});
+
+			await this.mongoDBInstance.finishTokenSubscription('address', data.address)
 		} catch (error) {
 			Sentry.captureException({message: 'SubscriberServiceV2: Error when put new token to DB', error});
 		}
@@ -223,27 +212,18 @@ export class SubscriberServiceV2 {
 	}
 
 	private static async generateNewTokenData(tokenInfo: IPair, messageInfo: TelegramMessageInfo): Promise<Token | null> {
-		const price = await SolanaService.getTokenPrice(tokenInfo.pairAddress);
-
-		if (!price) {
-			Sentry.captureMessage(`SubscriberServiceV2: No price from SolanaService for  ${tokenInfo.pairAddress}`);
-			console.log(`SubscriberServiceV2: No price from SolanaService for ${tokenInfo.pairAddress}`)
-
-			return null
-		}
-
 		return {
 			address: tokenInfo.pairAddress,
 			tokenAddress: tokenInfo.baseToken.address,
 			name: tokenInfo.baseToken.symbol,
-			initialPrice: price || 0,
-			currentPrice: price || 0,
+			initialPrice:  0,
+			currentPrice: 0,
 			startDate: new Date(),
 			lastUpdateDate: new Date(),
 			parsedLink: messageInfo.channelId,
 			messageLink: messageInfo.messageLink,
 			isEdited: messageInfo.isEdited,
-			provider: 'Solana',
+			provider: `Solana_${tokenInfo.dexId}`,
 			status: 'InProgress',
 		}
 	}

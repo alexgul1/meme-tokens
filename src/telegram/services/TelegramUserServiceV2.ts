@@ -30,6 +30,7 @@ export class TelegramUserServiceV2 {
 	private readonly processedAddresses: Set<string>;
 	// private callChannelEntity: Entity;
 	// private callChannelEntity: any;
+	private maestroBotEntity: any;
 	private readonly channelsIdToNameMap: CacheClass<long, string>
 
 	constructor() {
@@ -76,6 +77,7 @@ export class TelegramUserServiceV2 {
 		try {
 			await this.connect();
 			await this.handleUpdates()
+			this.maestroBotEntity = await this.client.getEntity('MaestroSniperBot')
 			// this.callChannelEntity = await this.client.getEntity('SaulSignals')
 		} catch (e) {
 			console.log(e)
@@ -179,6 +181,12 @@ export class TelegramUserServiceV2 {
 				this.processedAddresses.delete(extractedData);
 			}
 		}
+	}
+
+	public async sendAddressToBot(address: string) {
+		await this.client.sendMessage(this.maestroBotEntity, {
+			message: address
+		})
 	}
 
 	// 	public async sendMessageToCallChannel(ticker: string, tokenName:string, ca: string) {

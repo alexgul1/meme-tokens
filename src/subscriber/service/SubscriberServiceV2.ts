@@ -264,13 +264,20 @@ export class SubscriberServiceV2 {
 }
 
 export const sendMessageToGroup = async (token: Token, trxId: string | undefined, isSold: boolean): Promise<void> => {
+	const chainId = token.provider.split('_')[0];
+	let wallet = RaydiumSwap.walletAddress
+
+	if (chainId !== 'solana') {
+		wallet = '0x106B7745832D846ee9576Ad7842f5A7f4c685661';
+	}
+
 	const params = {
 		token: token.name,
 		action: isSold ? 'sell' : 'buy',
 		signalLink: token.messageLink,
 		transactionLink: trxId ? `https://solscan.io/tx/${trxId}` : '',
 		purchaseTime: token.startDate,
-		chartLink: `https://dexscreener.com/solana/${token.address}?maker=${RaydiumSwap.walletAddress}`,
+		chartLink: `https://dexscreener.com/${chainId}/${token.address}?maker=${wallet}`,
 		isEdited: token.isEdited
 	} as MessageParams
 

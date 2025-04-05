@@ -86,7 +86,7 @@ export class SubscriberServiceV2 {
 
 		console.time('Check token in wallet')
 
-		const tokensAmount = await RaydiumSwap.getTokensAmountInWallet(tokenInfo.baseToken.address);
+		const tokensAmount = tokenInfo.chainId === 'solana' ? await RaydiumSwap.getTokensAmountInWallet(tokenInfo.baseToken.address) : 0;
 
 		console.timeEnd('Check token in wallet')
 
@@ -223,7 +223,7 @@ export class SubscriberServiceV2 {
 			parsedLink: messageInfo.channelId,
 			messageLink: messageInfo.messageLink,
 			isEdited: messageInfo.isEdited,
-			provider: `Solana_${tokenInfo.dexId}`,
+			provider: `${tokenInfo.chainId}_${tokenInfo.dexId}`,
 			status: 'InProgress',
 		}
 	}

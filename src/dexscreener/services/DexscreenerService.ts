@@ -105,6 +105,8 @@ export class DexscreenerService {
 			return
 		}
 
+		console.log(address, pairs.pairs[0].chainId)
+
 		return pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair) || this.isTokenBscPair(pair))
 	}
 }

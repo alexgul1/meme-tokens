@@ -143,6 +143,14 @@ export class MongoService implements IMongoService<Token> {
 		}
 	}
 
+	public async createEntityInFinishedCollection(entity: Token): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+		const collection: Collection<Token> = this.db.collection(this._finishedCollectionName);
+		await collection.insertOne(entity);
+	}
+
 	public async insertTelegramMessageInfo(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
 		if (!this.db) {
 			throw new Error('Database connection is not established');

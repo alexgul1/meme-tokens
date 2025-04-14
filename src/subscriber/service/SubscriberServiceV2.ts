@@ -125,11 +125,7 @@ export class SubscriberServiceV2 {
 
 	public static async putNewTokenToDB(data: Token) {
 		try {
-			await this.mongoDBInstance.createEntity({
-				...data,
-			});
-
-			await this.mongoDBInstance.finishTokenSubscription('address', data.address)
+			await this.mongoDBInstance.createEntityInFinishedCollection(data)
 		} catch (error) {
 			Sentry.captureException({message: 'SubscriberServiceV2: Error when put new token to DB', error});
 		}

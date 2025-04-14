@@ -9,7 +9,6 @@ import * as Sentry from '@sentry/node';
 
 import {Connection} from '@solana/web3.js';
 import {TelegramBotService} from './telegram/services/TelegramServices';
-import {warmUpEndpoint} from './solana/utils/warmupEndpoints';
 
 dotenv.config();
 
@@ -39,8 +38,8 @@ const init = async () => {
 
 		console.log('STAKED_CONNECTION.rpcEndpoint', STAKED_CONNECTION.rpcEndpoint)
 
-		warmUpEndpoint(STAKED_CONNECTION.rpcEndpoint);
-		warmUpEndpoint(CONNECTION.rpcEndpoint)
+		// warmUpEndpoint(STAKED_CONNECTION.rpcEndpoint);
+		// warmUpEndpoint(CONNECTION.rpcEndpoint)
 
 		console.log(SHOULD_SWAP)
 

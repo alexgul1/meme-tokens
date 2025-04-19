@@ -8,5 +8,5 @@ node_modules/
 *.sublime-*
 .idea/
 .env*
-my_session/
+my_session*/
 yarn.lock

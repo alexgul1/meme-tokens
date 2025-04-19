@@ -31,6 +31,7 @@
     "copy-files": "copyfiles -u 1 src/**/*.jpeg dist"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.1.6",
     "@types/chai": "^4.3.5",
     "@types/memory-cache": "^0.2.6",
     "@types/mocha": "^10.0.1",

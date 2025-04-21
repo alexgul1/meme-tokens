@@ -63,7 +63,7 @@ export class PumpSwapService {
 					const tx = JSON.parse(raw.toString()) as TradeMsg;
 					if (tx.mint !== mint || !['buy', 'sell'].includes(tx.txType)) return;
 
-					const price = tx.solInPool / tx.tokensInPool; // формула ✔
+					const price = this.calculatePrice(tx); // формула ✔
 					clearTimeout(timer);
 					tmp.close();
 					resolve(price || 0);
@@ -127,7 +127,7 @@ export class PumpSwapService {
 			if (!['buy', 'sell'].includes(tx.txType)) return;
 			if (!this.subscribed.has(tx.mint)) return;
 
-			const price = tx.solInPool / tx.tokensInPool;
+			const price = this.calculatePrice(tx);
 			if (!price) return;
 
 			this.lastPrice.set(tx.mint, price);
@@ -135,5 +135,13 @@ export class PumpSwapService {
 		} catch {
 			/* malformed → ignore */
 		}
+	}
+
+	private static calculatePrice(tx: TradeMsg) {
+		const priceInPoolInfo = tx.solInPool / tx.tokensInPool;
+
+		const priceInTXInfo = tx.solAmount / tx.tokenAmount;
+
+		return (priceInTXInfo + priceInPoolInfo) / 2;
 	}
 }

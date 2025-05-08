@@ -7,7 +7,7 @@ import {NewMessage, NewMessageEvent,} from 'telegram/events';
 import PeerChannel = Api.PeerChannel;
 import {extractSolAddress} from '../utils/addressExtractor';
 
-import { EditedMessageEvent} from 'telegram/events/EditedMessage';
+import {EditedMessage, EditedMessageEvent} from 'telegram/events/EditedMessage';
 import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2';
 // import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
 import  {Cache, CacheClass} from 'memory-cache';
@@ -74,7 +74,7 @@ export class TelegramUserServiceV2 {
 
 	private async handleUpdates() {
 		this.client.addEventHandler(this.eventHandle.bind(this), new NewMessage({}))
-		// this.client.addEventHandler(this.editedMessageHandle.bind(this), new EditedMessage({}))
+		this.client.addEventHandler(this.editedMessageHandle.bind(this), new EditedMessage({}))
 	}
 
 	public async start(): Promise<void> {
@@ -109,7 +109,7 @@ export class TelegramUserServiceV2 {
 
 		if (isMaestroId) {
 			console.log(message.message)
-			if (message.message.includes('You gained')) {
+			if (message.message.includes('Trade on Maestro')) {
 				await message.forwardTo(this.memeTokensChannel)
 			}
 		}
@@ -143,57 +143,18 @@ export class TelegramUserServiceV2 {
 
 	public async editedMessageHandle(event: EditedMessageEvent) {
 		const message = event.message;
-		const peerChannel = (message?.peerId as PeerChannel);
+		const peerChannel = (message?.peerId as PeerChannel | PeerUser);
 
 		if (!peerChannel) {
 			return;
 		}
 
-		const channelId = peerChannel.channelId?.toString() || '';
+		const isMaestroId = ((peerChannel as PeerUser).userId?.toString() || '') === this.maestroBotEntity.id?.toString();
 
-		const isChatAllowed = this.chatIds.has(channelId) && !this.bannedChatIds.has(channelId);
-
-		SubscriberServiceV2.putIntoDBInfoMessage(isChatAllowed, !!extractSolAddress(message.message))
-
-		if (isChatAllowed) {
-			const editDateTimestamp = message.editDate;
-			const originalDateTimestamp = message.date;
-
-			if (!editDateTimestamp || !originalDateTimestamp) {
-				return; // Ensure both dates are present
-			}
-
-			// Convert timestamps to Date objects
-			const editDate = new Date(editDateTimestamp * 1000);
-			const originalDate = new Date(originalDateTimestamp * 1000);
-
-			// Calculate the difference in milliseconds
-			const timeDifferenceInMilliseconds = editDate.getTime() - originalDate.getTime();
-
-			// Check if the difference is less than 8 seconds (8888 milliseconds)
-			if (timeDifferenceInMilliseconds < 8888) {
-				const extractedData = extractSolAddress(message.message);
-
-				if (!extractedData) {
-					return;
-				}
-
-				if (this.processedAddresses.has(extractedData)) {
-					console.log('Now we processed this address', extractedData)
-					return;
-				}
-
-				const messageId = message.id;
-				const username = await this.getUsername(peerChannel);
-
-				// Handle based on whether it's a token or pair address
-				await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
-					channelId,
-					messageLink: `https://t.me/${username}/${messageId}`,
-					isEdited: true
-				});
-
-				this.processedAddresses.delete(extractedData);
+		if (isMaestroId) {
+			console.log('edited', message.message)
+			if (message.message.includes('You gained')) {
+				await message.forwardTo(this.memeTokensChannel)
 			}
 		}
 	}

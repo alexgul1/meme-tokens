@@ -108,6 +108,7 @@ export class TelegramUserServiceV2 {
 		SubscriberServiceV2.putIntoDBInfoMessage(isChatAllowed, !!extractSolAddress(message.message))
 
 		if (isMaestroId) {
+			console.log(message.message)
 			if (message.message.includes('You gained')) {
 				await message.forwardTo(this.memeTokensChannel)
 			}

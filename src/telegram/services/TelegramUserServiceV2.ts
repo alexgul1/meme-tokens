@@ -12,6 +12,8 @@ import {SubscriberServiceV2} from '../../subscriber/service/SubscriberServiceV2'
 // import {generateDetailedMemeTokenPromo} from '../../openai/utils/generateDetailedMemeTokenPromo';
 import  {Cache, CacheClass} from 'memory-cache';
 import long = Api.long;
+import {Entity} from 'telegram/define';
+import PeerUser = Api.PeerUser;
 
 export type TelegramMessageInfo = {
 	channelId: string,
@@ -30,7 +32,9 @@ export class TelegramUserServiceV2 {
 	private readonly processedAddresses: Set<string>;
 	// private callChannelEntity: Entity;
 	// private callChannelEntity: any;
-	private maestroBotEntity: any;
+	private maestroBotEntity!: Entity;
+	private memeTokensChannel!: Entity;
+
 	private readonly channelsIdToNameMap: CacheClass<long, string>
 
 	constructor() {
@@ -77,7 +81,9 @@ export class TelegramUserServiceV2 {
 		try {
 			await this.connect();
 			await this.handleUpdates()
-			this.maestroBotEntity = await this.client.getEntity('MaestroSniperBot')
+			this.maestroBotEntity = await this.client.getEntity('MaestroSniperBot');
+			this.memeTokensChannel = await this.client.getEntity('-1002367498352');
+
 			// this.callChannelEntity = await this.client.getEntity('SaulSignals')
 		} catch (e) {
 			console.log(e)
@@ -87,17 +93,25 @@ export class TelegramUserServiceV2 {
 
 	public async eventHandle(event: NewMessageEvent) {
 		const message = event.message;
-		const peerChannel = (message?.peerId as PeerChannel);
+		const peerChannel = (message?.peerId as PeerChannel | PeerUser);
 
 		if (!peerChannel) {
 			return;
 		}
 
-		const channelId = peerChannel.channelId?.toString() || '';
+		const isMaestroId = ((peerChannel as PeerUser).userId?.toString() || '') === this.maestroBotEntity.id?.toString();
+
+		const channelId = (peerChannel as PeerChannel).channelId?.toString() || '';
 
 		const isChatAllowed = this.chatIds.has(channelId) && !this.bannedChatIds.has(channelId);
 
 		SubscriberServiceV2.putIntoDBInfoMessage(isChatAllowed, !!extractSolAddress(message.message))
+
+		if (isMaestroId) {
+			if (message.message.includes('You gained')) {
+				await message.forwardTo(this.memeTokensChannel)
+			}
+		}
 
 		if (isChatAllowed) {
 			const extractedData = extractSolAddress(message.message);
@@ -114,7 +128,7 @@ export class TelegramUserServiceV2 {
 			this.processedAddresses.add(extractedData);
 
 			const messageId = message.id;
-			const username = await this.getUsername(peerChannel);
+			const username = await this.getUsername(peerChannel as PeerChannel);
 
 			await SubscriberServiceV2.subscribeToTokenV2(extractedData, {
 				channelId,

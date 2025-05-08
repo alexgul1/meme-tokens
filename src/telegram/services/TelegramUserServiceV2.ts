@@ -152,7 +152,6 @@ export class TelegramUserServiceV2 {
 		const isMaestroId = ((peerChannel as PeerUser).userId?.toString() || '') === this.maestroBotEntity.id?.toString();
 
 		if (isMaestroId) {
-			console.log('edited', message.message)
 			if (message.message.includes('You gained')) {
 				await message.forwardTo(this.memeTokensChannel)
 			}

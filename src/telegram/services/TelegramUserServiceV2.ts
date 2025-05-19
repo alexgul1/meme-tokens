@@ -81,7 +81,7 @@ export class TelegramUserServiceV2 {
 		try {
 			await this.connect();
 			await this.handleUpdates()
-			this.maestroBotEntity = await this.client.getEntity('MaestroSniperBot');
+			this.maestroBotEntity = await this.client.getEntity('MaestroProBot');
 			this.memeTokensChannel = await this.client.getEntity('-1002367498352');
 
 			// this.callChannelEntity = await this.client.getEntity('SaulSignals')

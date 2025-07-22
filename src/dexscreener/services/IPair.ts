@@ -3,6 +3,7 @@ export interface IPair {
     dexId: string;
     url: string;
     pairAddress: string;
+    labels: string[];
     baseToken: {
         address: string;
         name: string;

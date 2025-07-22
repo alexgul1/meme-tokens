@@ -37,6 +37,7 @@ export class PumpSwapService {
 	}
 
 	public static async unsubscribeFromPriceUpdates(mint: string): Promise<void> {
+		this.lastPrice.delete(mint);
 		this.callbacks.delete(mint);
 		this.subscribed.delete(mint);
 		if (this.ws?.readyState === WebSocket.OPEN) this.sendUnsub(mint);

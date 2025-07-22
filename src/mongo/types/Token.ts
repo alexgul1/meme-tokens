@@ -1,6 +1,7 @@
 export interface Token {
 	address: string; // Pair address
 	tokenAddress: string; // Token address
+	labels?: string[];
 	name: string; // Token name
 	initialPrice: number; // Token price at start
 	currentPrice: number; // Token price at this moment

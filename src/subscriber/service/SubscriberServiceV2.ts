@@ -19,6 +19,7 @@ import RaydiumSwap, { sleep } from '../../swap/service/RaydiumSwap';
 import { SHOULD_SWAP, telegramUserService } from '../../index';
 import { TelegramMessageInfo } from '../../telegram/services/TelegramUserServiceV2';
 import { TelegramBotService, MessageParams } from '../../telegram/services/TelegramServices';
+import {SolanaServiceV2} from '../../solana/services/SolanaServiceV2';
 
 const processingAddresses = new Set<string>();
 
@@ -29,8 +30,15 @@ export class SubscriberServiceV2 {
 	private static maxNegativeROE: number;
 
 	/* ───────── helpers ───────── */
-	private static svc(dexId = '') {
-		return dexId.toLowerCase().includes('pump') ? PumpSwapService : SolanaService;
+	private static svc(dexId = '', labels?: string[]) {
+		if ( dexId.toLowerCase().includes('pump')) {
+			return PumpSwapService;
+		}
+
+		if (labels?.includes('CPMM')) {
+			return SolanaServiceV2
+		}
+		return SolanaService;
 	}
 	private static svcKey(dexId = '', pair: string, mint: string) {
 		return dexId.toLowerCase().includes('pump') ? mint : pair;
@@ -55,7 +63,7 @@ export class SubscriberServiceV2 {
 
 		const tokenInfo = (await DexscreenerService.getTokenFromSearch(addr)) as IPair;
 		const allPairs = await DexscreenerService.searchTokenByAddress(addr);
-		console.log(addr, allPairs);
+		console.log(addr, allPairs, tokenInfo, msg);
 
 		if (allPairs) this.setParsedTokenInfoToDB(allPairs, msg);
 		console.timeEnd('Get token info from dex');
@@ -101,7 +109,7 @@ export class SubscriberServiceV2 {
 
 				if (!newPrice) {
 					if (!SHOULD_SWAP) await sleep(5000);
-					newPrice = await this.svc(tokenInfo.dexId).getTokenPrice(this.svcKey(tokenInfo.dexId, doc.address, doc.tokenAddress));
+					newPrice = await this.svc(tokenInfo.dexId, tokenInfo.labels).getTokenPrice(this.svcKey(tokenInfo.dexId, doc.address, doc.tokenAddress));
 				}
 
 				doc.initialPrice = newPrice ?? 0;
@@ -115,7 +123,7 @@ export class SubscriberServiceV2 {
 
 		if (doc) {
 			console.log('SubscriberServiceV2: subscribe price updates', doc.address);
-			this.svc(tokenInfo.dexId).subscribeToPriceUpdates(
+			this.svc(tokenInfo.dexId, tokenInfo.labels).subscribeToPriceUpdates(
 				this.svcKey(tokenInfo.dexId, doc.address, doc.tokenAddress),
 				(p) => this.handlePriceChange(doc!, p),
 			);
@@ -128,7 +136,7 @@ export class SubscriberServiceV2 {
 		console.log('SubscriberServiceV2:', active);
 		active.forEach((token) => {
 			const [, dexId = ''] = (token.provider || '').split('_');
-			this.svc(dexId).subscribeToPriceUpdates(
+			this.svc(dexId, token.labels).subscribeToPriceUpdates(
 				this.svcKey(dexId, token.address, token.tokenAddress),
 				(p) => this.handlePriceChange(token, p),
 			);
@@ -171,7 +179,7 @@ export class SubscriberServiceV2 {
 
 		if (finish) {
 			const [, dexId = ''] = (token.provider || '').split('_');
-			await this.svc(dexId).unsubscribeFromPriceUpdates(this.svcKey(dexId, token.address, token.tokenAddress));
+			await this.svc(dexId, token.labels).unsubscribeFromPriceUpdates(this.svcKey(dexId, token.address, token.tokenAddress));
 			await this.mongoDBInstance.finishTokenSubscription('address', token.address);
 			console.log(`Unsubscribed from pool ${token.address}`);
 		}
@@ -180,7 +188,7 @@ export class SubscriberServiceV2 {
 	/* ───────── build new token doc ───────── */
 	private static async generateNewTokenData(info: IPair, msg: TelegramMessageInfo): Promise<Token | null> {
 		const key = this.svcKey(info.dexId, info.pairAddress, info.baseToken.address);
-		const price = await this.svc(info.dexId).getTokenPrice(key);
+		const price = await this.svc(info.dexId, info.labels).getTokenPrice(key);
 		if (!price) {
 			Sentry.captureMessage(`SubscriberServiceV2: No price from service for ${info.pairAddress}`);
 			console.log(`SubscriberServiceV2: No price from service for ${info.pairAddress}`);
@@ -189,6 +197,7 @@ export class SubscriberServiceV2 {
 
 		return {
 			address: info.pairAddress,
+			labels: info.labels,
 			tokenAddress: info.baseToken.address,
 			name: info.baseToken.symbol,
 			initialPrice: price,

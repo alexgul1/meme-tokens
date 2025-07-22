@@ -86,7 +86,12 @@ export class DexscreenerService {
 	}
 
 	private static isTokenSolPairOnRaydium(pair: IPair) {
-		return pair.chainId === 'solana' && (pair.dexId === 'raydium' || pair.dexId === 'pumpswap') &&
+		return pair.chainId === 'solana' && pair.dexId === 'raydium') &&
+			(pair.baseToken.address === this.SOLAddress || pair.quoteToken.address === this.SOLAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000) && !pair.labels?.length
+	}
+
+	private static isTokenSolPairOnPumpSwap(pair: IPair) {
+		return pair.chainId === 'solana' && pair.dexId === 'pumpswap' &&
 			(pair.baseToken.address === this.SOLAddress || pair.quoteToken.address === this.SOLAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000)
 	}
 
@@ -98,6 +103,6 @@ export class DexscreenerService {
 			return
 		}
 
-		return pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
+		return  pairs.pairs.find((pair)=> this.isTokenSolPairOnPumpSwap(pair)) || pairs.pairs.find((pair)=> this.isTokenSolPairOnRaydium(pair))
 	}
 }

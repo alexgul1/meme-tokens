@@ -1,148 +1,224 @@
-import WebSocket from 'ws';
 import * as Sentry from '@sentry/node';
+import {Commitment, GetProgramAccountsFilter, PublicKey} from '@solana/web3.js';
+import {CONNECTION} from '../../index';
+
+interface PumpPoolData {
+	poolBump: number;
+	index: number;
+	creator: PublicKey;
+	baseMint: PublicKey;
+	quoteMint: PublicKey;
+	lpMint: PublicKey;
+	poolBaseTokenAccount: PublicKey;
+	poolQuoteTokenAccount: PublicKey;
+	lpSupply: bigint;
+	coinCreator: PublicKey;
+}
 
 type PriceUpdateCallback = (price: number) => void;
 
-/** структура ровно как приходит от PumpPortal */
-interface TradeMsg {
-	signature: string;
-	mint: string;
-	traderPublicKey: string;
-	txType: 'buy' | 'sell';
-	tokenAmount: number;
-	solAmount: number;
-	tokensInPool: number;
-	solInPool: number;
-	marketCapSol: number;
-	pool: string; // «pump-amm»
-}
 
 export class PumpSwapService {
-	private static ws: WebSocket | null = null;
-	private static connecting = false;
-	private static subscribed = new Set<string>();
-	private static callbacks = new Map<string, PriceUpdateCallback>();
-	private static lastPrice = new Map<string, number>();
+	private static subscriptions: Map<string, NodeJS.Timeout> = new Map();
+	private static callbacks: Map<string, PriceUpdateCallback> = new Map();
+	private static poolDataCache: Map<string, PumpPoolData> = new Map();
+	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
+	private static PUMP_AMM_PROGRAM_ID = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
 
-	/* ───────── public API ───────── */
+	public static async subscribeToPriceUpdates(mintAddress: string, callback: PriceUpdateCallback): Promise<void> {
+		if (this.subscriptions.has(mintAddress)) {
+			return;
+		}
 
-	public static async subscribeToPriceUpdates(
-		mint: string,
-		cb: PriceUpdateCallback,
-	): Promise<void> {
-		this.callbacks.set(mint, cb);
-		this.subscribed.add(mint);
-		await this.ensureSocket();
-		if (this.ws?.readyState === WebSocket.OPEN) this.sendSub(mint);
-	}
-
-	public static async unsubscribeFromPriceUpdates(mint: string): Promise<void> {
-		this.lastPrice.delete(mint);
-		this.callbacks.delete(mint);
-		this.subscribed.delete(mint);
-		if (this.ws?.readyState === WebSocket.OPEN) this.sendUnsub(mint);
-	}
-
-	public static async getTokenPrice(mint: string): Promise<number> {
-		if (this.lastPrice.has(mint)) return this.lastPrice.get(mint)!;
-
-		return new Promise<number>((resolve) => {
-			const tmp = new WebSocket('wss://pumpportal.fun/api/data');
-			const timer = setTimeout(() => {
-				tmp.close();
-				resolve(0);
-			}, 100_000);
-
-			tmp.on('open', () =>
-				tmp.send(
-					JSON.stringify({ method: 'subscribeTokenTrade', keys: [mint] }),
-				),
-			);
-
-			tmp.on('message', (raw) => {
-				try {
-					const tx = JSON.parse(raw.toString()) as TradeMsg;
-					if (tx.mint !== mint || !['buy', 'sell'].includes(tx.txType)) return;
-
-					const price = this.calculatePrice(tx); // формула ✔
-					clearTimeout(timer);
-					tmp.close();
-					resolve(price || 0);
-				} catch {
-					/* ignore */
-				}
-			});
-
-			tmp.on('error', () => {
-				clearTimeout(timer);
-				tmp.close();
-				resolve(0);
-			});
-		});
-	}
-
-	/* ───────── internal ───────── */
-
-	private static async ensureSocket() {
-		if (this.ws && this.ws.readyState !== WebSocket.CLOSED) return;
-		if (this.connecting) return;
-
-		this.connecting = true;
-		this.ws = new WebSocket('wss://pumpportal.fun/api/data');
-
-		this.ws.on('open', () => {
-			this.connecting = false;
-			for (const mint of this.subscribed) this.sendSub(mint);
-		});
-
-		// ❗теперь парсим сразу TradeMsg без «method/data» оболочки
-		this.ws.on('message', (raw) => this.handleMsg(raw.toString()));
-
-		this.ws.on('error', (err) =>
-			Sentry.captureException({ message: 'PumpPortal WS error', err }),
-		);
-
-		this.ws.on('close', () => {
-			this.ws = null;
-			setTimeout(() => this.ensureSocket(), 1_000); // авто‑reconnect
-		});
-	}
-
-	private static sendSub(mint: string) {
-		this.ws?.send(
-			JSON.stringify({ method: 'subscribeTokenTrade', keys: [mint] }),
-		);
-	}
-
-	private static sendUnsub(mint: string) {
-		this.ws?.send(
-			JSON.stringify({ method: 'unsubscribeTokenTrade', keys: [mint] }),
-		);
-	}
-
-	/* ——— ваш «рабочий» handleMsg, без изменений ——— */
-	private static handleMsg(msg: string) {
 		try {
-			const tx = JSON.parse(msg) as TradeMsg;
+			// Store the callback
+			this.callbacks.set(mintAddress, callback);
 
-			if (!['buy', 'sell'].includes(tx.txType)) return;
-			if (!this.subscribed.has(tx.mint)) return;
+			// Get initial price
+			await this.getInitialPoolState(mintAddress);
 
-			const price = this.calculatePrice(tx);
-			if (!price) return;
+			// Start interval polling every 500ms
+			const intervalId = setInterval(async () => {
+				await this.processPoolUpdate(mintAddress);
+			}, 500);
 
-			this.lastPrice.set(tx.mint, price);
-			this.callbacks.get(tx.mint)?.(price);
-		} catch {
-			/* malformed → ignore */
+			this.subscriptions.set(mintAddress, intervalId);
+		} catch (error) {
+			Sentry.captureException({ message: 'Error during subscription', error });
+			console.error('Error during subscription:', error);
 		}
 	}
 
-	private static calculatePrice(tx: TradeMsg) {
-		const priceInPoolInfo = tx.solInPool / tx.tokensInPool;
+	public static async unsubscribeFromPriceUpdates(mintAddress: string): Promise<void> {
+		const intervalId = this.subscriptions.get(mintAddress);
 
-		const priceInTXInfo = tx.solAmount / tx.tokenAmount;
+		if (intervalId !== undefined) {
+			clearInterval(intervalId);
+			this.subscriptions.delete(mintAddress);
+			this.callbacks.delete(mintAddress);
+		}
+	}
 
-		return (priceInTXInfo + priceInPoolInfo) / 2;
+	public static async getTokenPrice(mintAddress: string): Promise<number | undefined> {
+		try {
+			const publicKey = new PublicKey(mintAddress);
+			return await this.fetchAndParseTokenPrice(publicKey);
+		} catch (error) {
+			return undefined;
+		}
+	}
+
+	private static async processPoolUpdate(mintAddress: string): Promise<void> {
+		const price = await this.fetchAndParseTokenPrice(new PublicKey(mintAddress));
+
+		if (!price) {
+			return;
+		}
+
+		// Trigger the callback with the new price
+		const callback = this.callbacks.get(mintAddress);
+
+		if (callback) {
+			callback(price as number);
+		}
+	}
+
+	private static async fetchAndParseTokenPrice(mintAddress: PublicKey): Promise<number | undefined> {
+		try {
+			// Check cache first
+			let poolData = this.poolDataCache.get(mintAddress.toBase58());
+
+			if (!poolData) {
+				poolData = await this.getPumpswapPoolData(mintAddress);
+				// Cache the pool data
+				this.poolDataCache.set(mintAddress.toBase58(), poolData);
+			}
+
+			// Check if accounts exist first
+			const quoteAccountInfo = await CONNECTION.getAccountInfo(poolData.poolQuoteTokenAccount);
+			const baseAccountInfo = await CONNECTION.getAccountInfo(poolData.poolBaseTokenAccount);
+
+			if (!quoteAccountInfo || !baseAccountInfo) {
+				return undefined;
+			}
+
+			const quoteBalance = await CONNECTION.getTokenAccountBalance(poolData.poolQuoteTokenAccount);
+			const baseBalance = await CONNECTION.getTokenAccountBalance(poolData.poolBaseTokenAccount);
+
+			if (poolData.baseMint.equals(this.SOLAddress)) {
+				return (baseBalance.value.uiAmount || 0) / (quoteBalance.value.uiAmount || 0);
+			} else {
+				return (quoteBalance.value.uiAmount || 0) / (baseBalance.value.uiAmount || 0);
+			}
+		} catch (error) {
+			Sentry.captureException({ message: 'Error processing token price', error, mintAddress });
+			return undefined;
+		}
+	}
+
+	private static async getPumpswapPoolData(mint: PublicKey): Promise<PumpPoolData> {
+		console.log('get pool data from connection')
+		const searchOrders: [PublicKey, PublicKey][] = [
+			[mint, this.SOLAddress],
+			[this.SOLAddress, mint]
+		];
+
+		for (const [tokenA, tokenB] of searchOrders) {
+			const filters: GetProgramAccountsFilter[] = [
+				{
+					memcmp: {
+						offset: 43,
+						bytes: tokenA.toBase58()
+					}
+				},
+				{
+					memcmp: {
+						offset: 75,
+						bytes: tokenB.toBase58()
+					}
+				}
+			];
+
+			const response = await CONNECTION.getProgramAccounts(
+				this.PUMP_AMM_PROGRAM_ID,
+				{
+					filters,
+					encoding: 'base64',
+					commitment: 'processed' as Commitment
+				}
+			);
+
+			if (response.length > 0) {
+				const accountData = response[0].account.data;
+				const binaryData = Buffer.from(accountData as unknown as string, 'base64');
+				return this.parsePumpPoolData(binaryData);
+			}
+		}
+
+		throw new Error('No matching pool found');
+	}
+
+	private static parsePumpPoolData(binaryData: Buffer): PumpPoolData {
+		// Skip the first 8 bytes (discriminator) and parse data from bytes 8 to 243
+		const poolData = binaryData.slice(8, 243);
+
+		if (poolData.length < 235) {
+			throw new Error(`Insufficient data length: ${poolData.length}, expected at least 235 bytes`);
+		}
+
+		let offset = 0;
+
+		// Parse according to the Python struct
+		const poolBump = poolData.readUInt8(offset);
+		offset += 1;
+
+		const index = poolData.readUInt16LE(offset);
+		offset += 2;
+
+		const creator = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		const baseMint = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		const quoteMint = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		const lpMint = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		const poolBaseTokenAccount = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		const poolQuoteTokenAccount = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		const lpSupply = poolData.readBigUInt64LE(offset);
+		offset += 8;
+
+		const coinCreator = new PublicKey(poolData.slice(offset, offset + 32));
+		offset += 32;
+
+		return {
+			poolBump,
+			index,
+			creator,
+			baseMint,
+			quoteMint,
+			lpMint,
+			poolBaseTokenAccount,
+			poolQuoteTokenAccount,
+			lpSupply,
+			coinCreator
+		};
+	}
+
+	private static async getInitialPoolState(mintAddress: string): Promise<void> {
+		try {
+			await this.processPoolUpdate(mintAddress);
+		} catch (error) {
+			Sentry.captureException({ message: 'Error fetching initial pool state', error });
+			console.error('Error fetching initial pool state:', error);
+		}
 	}
 }

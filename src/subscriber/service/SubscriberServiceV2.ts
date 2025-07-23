@@ -63,7 +63,7 @@ export class SubscriberServiceV2 {
 
 		const tokenInfo = (await DexscreenerService.getTokenFromSearch(addr)) as IPair;
 		const allPairs = await DexscreenerService.searchTokenByAddress(addr);
-		console.log(addr, allPairs, tokenInfo, msg);
+		console.log(addr, tokenInfo, msg);
 
 		if (allPairs) this.setParsedTokenInfoToDB(allPairs, msg);
 		console.timeEnd('Get token info from dex');

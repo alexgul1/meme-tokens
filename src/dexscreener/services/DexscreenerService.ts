@@ -86,7 +86,7 @@ export class DexscreenerService {
 	}
 
 	private static isTokenSolPairOnRaydium(pair: IPair) {
-		return pair.chainId === 'solana' && (pair.dexId === 'raydium' || pair.dexId === 'pumpswap') &&
+		return pair.chainId === 'solana' &&
 			(pair.baseToken.address === this.SOLAddress || pair.quoteToken.address === this.SOLAddress) && (pair.liquidity?.usd && pair.liquidity?.usd > 3000)
 	}
 	static async getTokenFromSearch(address: string):Promise<IPair|undefined>{

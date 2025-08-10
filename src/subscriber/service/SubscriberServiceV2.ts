@@ -241,6 +241,10 @@ export class SubscriberServiceV2 {
 		}
 	}
 
+	public static async saveActiveTelegramIds(ids: string[]){
+		await this.mongoDBInstance.saveActiveTelegramIds(ids)
+	}
+
 
 	public static async putIntoDBInfoMessage(isIncluded: boolean, hasTokenAddress: boolean): Promise<void> {
 		await this.mongoDBInstance.insertTelegramMessageInfo(isIncluded, isIncluded && hasTokenAddress)

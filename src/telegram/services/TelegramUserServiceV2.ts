@@ -84,6 +84,8 @@ export class TelegramUserServiceV2 {
 			this.maestroBotEntity = await this.client.getEntity('MaestroSniperBot');
 			this.memeTokensChannel = await this.client.getEntity('-1002367498352');
 
+			this.saveActiveTelegramIds();
+
 			// this.callChannelEntity = await this.client.getEntity('SaulSignals')
 		} catch (e) {
 			console.log(e)
@@ -196,5 +198,9 @@ export class TelegramUserServiceV2 {
 		}
 
 		return channel.username || '';
+	}
+
+	private async saveActiveTelegramIds() {
+		await SubscriberServiceV2.saveActiveTelegramIds([...this.chatIds])
 	}
 }

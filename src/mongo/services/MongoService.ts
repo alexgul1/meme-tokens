@@ -19,6 +19,7 @@ export class MongoService implements IMongoService<Token> {
 	private readonly testTGCollectionName: string;
 	private readonly version: number;
 	private readonly callCollectionName: string;
+	private readonly activeTelegramIdsCollectionName: string;
 
 
 	constructor(version = 1) {
@@ -31,6 +32,7 @@ export class MongoService implements IMongoService<Token> {
 		this.callCollectionName = process.env.CALL_COLLECTION_NAME as string;
 
 		this.testTGCollectionName = process.env.TEST_TG_COLLECTION_NAME as string;
+		this.activeTelegramIdsCollectionName = process.env.ACTIVE_TELEGRAM_IDS_COLLECTION_NAME as string;
 
 		this.version = version;
 
@@ -194,6 +196,19 @@ export class MongoService implements IMongoService<Token> {
 		const collection: Collection<Token> = this.db.collection(this.callCollectionName);
 
 		await collection.insertOne(token);
+	}
+
+	public async saveActiveTelegramIds(ids: string[]): Promise<void> {
+		if (!this.db) {
+			throw new Error('Database connection is not established');
+		}
+
+		const collection: Collection<{list: string[], timestamp: number}> = this.db.collection(this.activeTelegramIdsCollectionName);
+
+		await collection.insertOne({
+			list: ids,
+			timestamp: Date.now()
+		})
 	}
 
 	public async close(): Promise<void> {

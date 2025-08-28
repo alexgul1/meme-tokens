@@ -28,6 +28,8 @@ export class TelegramBotService {
 	private static bot: TelegramBot;
 	private static groupID: string = process.env.TELEGRAM_STAT_GROUP_ID!
 	private static messageThreadId: number = parseInt(process.env.TELEGRAM_STAT_MESSAGE_THREAD_ID!)
+	private static PRIVATE_LINK_RE = /^https?:\/\/t\.me\/c\/(\d+)\/(\d+)(?:\?.*)?$/i;
+	private static PUBLIC_LINK_RE  = /^https?:\/\/t\.me\/(?:s\/)?([^/]+)\/(\d+)(?:\?.*)?$/i;
 
 	// Define message templates
 	private static readonly PURCHASE_TEMPLATE = `
@@ -68,8 +70,64 @@ export class TelegramBotService {
 	static initialize(): void {
 		if (!this.bot) {
 			this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, {polling: true});
-			this.bot.onText(/\/my_wallet_tokens/, this.getMyTokensOnRequest.bind(this) )
+			this.bot.onText(/\/my_wallet_tokens/, this.getMyTokensOnRequest.bind(this))
+			this.bot.onText(/\/get_chat_id\s+(.+)/, this.getChatId.bind(this))
 			console.log('TG bot initialized')
+		}
+	}
+
+	static async getChatId(msg: TelegramBot.Message, match: RegExpExecArray | null): Promise<void> {
+		const replyTo = msg.chat.id;
+		const link = (match?.[1] || '').trim();
+
+		if (!link) {
+			this.bot.sendMessage(replyTo, '❌ Пришли ссылку на сообщение.');
+			return
+		}
+
+		try {
+			let numericChatId: string | number | null = null;
+			let messageId: string | null = null;
+
+			// 1) Приватные ссылки: t.me/c/<internal_id>/<messageId>
+			let m = link.match(this.PRIVATE_LINK_RE);
+			if (m) {
+				const [, rawId, mid] = m;
+				// для приватных чатов Telegram формирует t.me/c/<internal_id>,
+				// реальный chat_id = -100<internal_id>
+				numericChatId = `-100${rawId}`;
+				messageId = mid;
+			} else {
+				// 2) Публичные: t.me/<username>/<messageId> или t.me/s/<username>/<messageId>
+				m = link.match(this.PUBLIC_LINK_RE);
+				if (m) {
+					const [, username, mid] = m;
+					messageId = mid;
+
+					// Берём числовой id через getChat.
+					// ВАЖНО: Боту обычно нужно иметь доступ к чату (иногда достаточно публичности,
+					// но надёжнее — добавить бота в канал/группу хотя бы как читателя).
+					const chat = await this.bot.getChat(username);
+					// Для каналов/супергрупп Telegram возвращает отрицательный id вида -100...
+					numericChatId = chat.id;
+				}
+			}
+
+			if (!numericChatId || !messageId) {
+				this.bot.sendMessage(replyTo, '❌ Невалидная или неподдерживаемая ссылка.');
+				return;
+			}
+
+			this.bot.sendMessage(
+				replyTo,
+				`✅ Chat ID: ${numericChatId}\n🧾 Message ID: ${messageId}`
+			);
+		} catch (err: any) {
+			// Частые причины: бот не имеет доступа к чату/каналу, чат приватный, username неверный
+			this.bot.sendMessage(
+				replyTo,
+				`⚠️ Не удалось получить chat_id.\nПричина: ${err?.message || err}`
+			);
 		}
 	}
 

@@ -200,6 +200,12 @@ export class TelegramUserServiceV2 {
 		return channel.username || '';
 	}
 
+	public async getChannelId(channelName: string): Promise<string> {
+		const channel = await this.client.getEntity(channelName) as Api.Channel;
+
+		return channel.id.toString();
+	}
+
 	private async saveActiveTelegramIds() {
 		await SubscriberServiceV2.saveActiveTelegramIds([...this.chatIds])
 	}

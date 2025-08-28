@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import RaydiumSwap from '../../swap/service/RaydiumSwap';
+import {telegramUserService} from "../../index";
 
 export type MessageParams = {
 	token: string;
@@ -107,9 +108,8 @@ export class TelegramBotService {
 					// Берём числовой id через getChat.
 					// ВАЖНО: Боту обычно нужно иметь доступ к чату (иногда достаточно публичности,
 					// но надёжнее — добавить бота в канал/группу хотя бы как читателя).
-					const chat = await this.bot.getChat(username);
 					// Для каналов/супергрупп Telegram возвращает отрицательный id вида -100...
-					numericChatId = chat.id;
+					numericChatId = await telegramUserService.getChannelId(username);
 				}
 			}
 

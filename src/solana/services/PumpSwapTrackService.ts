@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node';
-import {Commitment, GetProgramAccountsFilter, PublicKey} from '@solana/web3.js';
+import {AccountInfo, Commitment, GetProgramAccountsFilter, PublicKey} from '@solana/web3.js';
 import {CONNECTION} from '../../index';
 
 interface PumpPoolData {
@@ -22,6 +22,7 @@ export class PumpSwapService {
 	private static subscriptions: Map<string, NodeJS.Timeout> = new Map();
 	private static callbacks: Map<string, PriceUpdateCallback> = new Map();
 	private static poolDataCache: Map<string, PumpPoolData> = new Map();
+	private static accountInfoCache: Map<string, AccountInfo<Buffer>> = new Map();
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
 	private static PUMP_AMM_PROGRAM_ID = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
 
@@ -95,11 +96,16 @@ export class PumpSwapService {
 			}
 
 			// Check if accounts exist first
-			const quoteAccountInfo = await CONNECTION.getAccountInfo(poolData.poolQuoteTokenAccount);
-			const baseAccountInfo = await CONNECTION.getAccountInfo(poolData.poolBaseTokenAccount);
+			const quoteAccountInfo = this.accountInfoCache.get(poolData.poolQuoteTokenAccount.toString())
+				?? await CONNECTION.getAccountInfo(poolData.poolQuoteTokenAccount);
+			const baseAccountInfo = this.accountInfoCache.get(poolData.poolBaseTokenAccount.toString())
+				?? await CONNECTION.getAccountInfo(poolData.poolBaseTokenAccount);
 
 			if (!quoteAccountInfo || !baseAccountInfo) {
 				return undefined;
+			} else {
+				this.accountInfoCache.set(poolData.poolQuoteTokenAccount.toString(), quoteAccountInfo);
+				this.accountInfoCache.set(poolData.poolBaseTokenAccount.toString(), baseAccountInfo);
 			}
 
 			const quoteBalance = await CONNECTION.getTokenAccountBalance(poolData.poolQuoteTokenAccount);

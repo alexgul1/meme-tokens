@@ -11,6 +11,7 @@ type PriceUpdateCallback = (price: number) => void;
 
 export class SolanaService {
 	private static subscriptions: Map<string, number> = new Map();
+	private static accountInfoCache: Map<string, AccountInfo<Buffer>> = new Map();
 	private static callbacks: Map<string, PriceUpdateCallback> = new Map();
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
 
@@ -59,9 +60,12 @@ export class SolanaService {
 	public static async getTokenPrice(poolID: string): Promise<number|undefined> {
 		const publicKey = new PublicKey(poolID);
 
-		const info = await CONNECTION.getAccountInfo(publicKey);
+		const info = this.accountInfoCache.get(publicKey.toString())
+			?? await CONNECTION.getAccountInfo(publicKey);
 
 		if (info && info.data) {
+			this.accountInfoCache.set(publicKey.toString(), info)
+
 			const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data as Buffer);
 			return 	await this.fetchAndParseTokenPrice(poolState);
 		} else {
@@ -123,8 +127,10 @@ export class SolanaService {
 
 	private static async getInitialPoolState(publicKey: PublicKey, poolID: string): Promise<void> {
 		try {
-			const info = await CONNECTION.getAccountInfo(publicKey);
+			const info = this.accountInfoCache.get(publicKey.toString())
+				?? await CONNECTION.getAccountInfo(publicKey);
 			if (info && info.data) {
+				this.accountInfoCache.set(publicKey.toString(), info)
 				const poolState: LiquidityStateV4 = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data as Buffer);
 				await this.processPoolUpdate(poolState, poolID);
 			} else {

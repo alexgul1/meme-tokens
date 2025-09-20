@@ -12,6 +12,7 @@ import RaydiumSwap, {sleep} from '../../swap/service/RaydiumSwap';
 import {SHOULD_SWAP, telegramUserService} from '../../index';
 import {TelegramMessageInfo} from '../../telegram/services/TelegramUserServiceV2';
 import {MessageParams, TelegramBotService} from '../../telegram/services/TelegramServices';
+import {extractSolAddress} from '../../telegram/utils/addressExtractor';
 
 const processingAddresses = new Set();
 const parsedAddresses = new Set();
@@ -53,6 +54,11 @@ export class SubscriberServiceV2 {
 		if (!tokenInfo) {
 			parsedAddresses.delete(tokenAddress);
 			return
+		}
+
+		if (!!extractSolAddress(tokenInfo.baseToken.name) || !!extractSolAddress(tokenInfo.baseToken.symbol)) {
+			console.log(`SubscriberServiceV2: Looks like scamming token, name: ${tokenInfo.baseToken.name}, symbol: ${tokenInfo.baseToken.symbol}, address: ${tokenInfo.baseToken.address}`);
+			return;
 		}
 
 

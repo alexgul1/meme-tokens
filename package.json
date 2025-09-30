@@ -36,7 +36,7 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^20.4.1",
     "@types/websocket": "^1.0.10",
-    "@typescript-eslint/eslint-plugin": "^5.61.0",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^5.61.0",
     "chai": "^5.1.1",
     "conventional-changelog-cli": "^3.0.0",

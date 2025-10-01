@@ -92,7 +92,7 @@ export class DexscreenerService {
 	static async getTokenFromSearch(address: string):Promise<IPair|undefined>{
 		const pairs = await this.searchTokenByAddress(address)
 
-		if (!pairs?.pairs) {
+		if (!pairs?.pairs.length) {
 			return
 		}
 

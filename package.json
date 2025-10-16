@@ -57,7 +57,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
     "@raydium-io/raydium-sdk": "^1.3.1-beta.58",
-    "@sentry/node": "^8.26.0",
+    "@sentry/node": "^10.20.0",
     "@solana/web3.js": "^1.95.2",
     "@types/mongodb": "^4.0.7",
     "@types/node-telegram-bot-api": "^0.64.7",

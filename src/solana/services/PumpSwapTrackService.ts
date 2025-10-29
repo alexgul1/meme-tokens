@@ -25,6 +25,10 @@ export class PumpSwapService {
 	private static accountInfoCache: Map<string, AccountInfo<Buffer>> = new Map();
 	private static SOLAddress = new PublicKey('So11111111111111111111111111111111111111112');
 	private static PUMP_AMM_PROGRAM_ID = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
+	
+	// Throttling: не чаще 2 секунд на токен
+	private static lastFetchTime: Map<string, number> = new Map();
+	private static readonly THROTTLE_INTERVAL_MS = 2000; // 2 секунды
 
 	public static async subscribeToPriceUpdates(mintAddress: string, callback: PriceUpdateCallback): Promise<void> {
 		if (this.subscriptions.has(mintAddress)) {
@@ -38,10 +42,10 @@ export class PumpSwapService {
 			// Get initial price
 			await this.getInitialPoolState(mintAddress);
 
-			// Start interval polling every 500ms
+			// Start interval polling every 2000ms
 			const intervalId = setInterval(async () => {
 				await this.processPoolUpdate(mintAddress);
-			}, 500);
+			}, 2000);
 
 			this.subscriptions.set(mintAddress, intervalId);
 		} catch (error) {
@@ -52,6 +56,9 @@ export class PumpSwapService {
 
 	public static async unsubscribeFromPriceUpdates(mintAddress: string): Promise<void> {
 		const intervalId = this.subscriptions.get(mintAddress);
+
+		// Очищаем throttling данные
+		this.lastFetchTime.delete(mintAddress);
 
 		if (intervalId !== undefined) {
 			clearInterval(intervalId);
@@ -70,6 +77,18 @@ export class PumpSwapService {
 	}
 
 	private static async processPoolUpdate(mintAddress: string): Promise<void> {
+		const now = Date.now();
+		const lastFetch = this.lastFetchTime.get(mintAddress) || 0;
+		const timeSinceLastFetch = now - lastFetch;
+
+		// Если прошло меньше 2 секунд - не обновляем (interval сам вызовет позже)
+		if (timeSinceLastFetch < this.THROTTLE_INTERVAL_MS) {
+			return;
+		}
+
+		// Обновляем время последнего fetch
+		this.lastFetchTime.set(mintAddress, now);
+
 		const price = await this.fetchAndParseTokenPrice(new PublicKey(mintAddress));
 
 		if (!price) {

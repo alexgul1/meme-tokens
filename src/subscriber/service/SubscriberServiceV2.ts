@@ -59,14 +59,15 @@ export class SubscriberServiceV2 {
 
 	/* ───────── Telegram trigger ───────── */
 	public static async subscribeToTokenV2(addr: string, msg: TelegramMessageInfo) {
-		console.time('Get token info from dex');
+		const timerLabel = `Get token info from dex: ${addr}`;
+		console.time(timerLabel);
 
 		const tokenInfo = (await DexscreenerService.getTokenFromSearch(addr)) as IPair;
 		const allPairs = await DexscreenerService.searchTokenByAddress(addr);
 		console.log(addr, tokenInfo, msg);
 
 		if (allPairs) this.setParsedTokenInfoToDB(allPairs, msg);
-		console.timeEnd('Get token info from dex');
+		console.timeEnd(timerLabel);
 		if (!tokenInfo) return;
 
 		if (processingAddresses.has(tokenInfo.pairAddress)) {
@@ -77,12 +78,13 @@ export class SubscriberServiceV2 {
 		processingAddresses.add(tokenInfo.pairAddress);
 
 		/* finished dupes */
-		console.time('Check token in finished collection');
+		const finishedCheckLabel = `Check token in finished: ${tokenInfo.pairAddress}`;
+		console.time(finishedCheckLabel);
 		const finished = await this.mongoDBInstance.getEntityFromFinishedCollection({
 			address: tokenInfo.pairAddress,
 			parsedLink: msg.channelId,
 		});
-		console.timeEnd('Check token in finished collection');
+		console.timeEnd(finishedCheckLabel);
 		if (finished) {
 			processingAddresses.delete(tokenInfo.pairAddress);
 			console.log('SubscriberServiceV2: We have this combination in finished collection', tokenInfo.pairAddress, msg.channelId);
@@ -90,9 +92,10 @@ export class SubscriberServiceV2 {
 		}
 
 		/* current collection */
-		console.time('Check token in current collection');
+		const currentCheckLabel = `Check token in current: ${tokenInfo.pairAddress}`;
+		console.time(currentCheckLabel);
 		let doc = await this.mongoDBInstance.getEntity('address', tokenInfo.pairAddress);
-		console.timeEnd('Check token in current collection');
+		console.timeEnd(currentCheckLabel);
 
 		if (!doc) {
 			doc = await this.generateNewTokenData(tokenInfo, msg);
@@ -100,10 +103,11 @@ export class SubscriberServiceV2 {
 				let newPrice: number | null | undefined = null;
 
 				if (SHOULD_SWAP) {
-					console.time('Buy token');
+					const buyLabel = `Buy token: ${doc.tokenAddress}`;
+					console.time(buyLabel);
 					const [trx, price] = await RaydiumSwap.submitTransaction(doc.address, doc.tokenAddress, false);
 					newPrice = price;
-					console.timeEnd('Buy token');
+					console.timeEnd(buyLabel);
 					sendMessageToGroup(doc, trx, false);
 				}
 
